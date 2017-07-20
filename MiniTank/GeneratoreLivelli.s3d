@@ -1,0 +1,921 @@
+class GeneratoreLivelli {
+	parseLevel();
+	drawLevel();
+	drawSkybox();
+	nonParsed();
+	catasta(posizione, piani, scala, orientamento);
+	cubo(materiale, posizione, dimensioni, s);
+	cilindro(materiale, posizione, dimensioni, s);
+	pavimento(materiale, posizione, dimensioni, s);
+	rampa(materiale, posizione, dimensioni, s);
+	piramide(materiale, posizione, dimensioni, s);
+	arco(materiale, posizione, dimensioni,s,orientamento);
+	gazebo(materiale, posizione, dimensioni, s);
+	lamp(materiale, posizione, h);
+	casa(materiale, posizione, dimensioni, scala, orientamento);
+	villa(materiale, posizione, dimensioni, scala, orientamento);
+	torre(materiale, posizione, piani, scala);
+	albero(elemento, posizione);
+	LoadSkyboxTextures();
+	
+	var materials;
+	var bordi;
+	var cataste;
+	var pavimenti;
+	var cubi; 
+	var cilindri;
+	var piramidi;
+	var archi;
+	var cols;
+	var sfere;
+	var lights;
+	var rampe;
+	var torri;
+	var alberi;
+	var skyboxImageName;
+	var skyboxTex;
+	var meshImportate;
+};
+
+function GeneratoreLivelli::GeneratoreLivelli() { //array per gli elementi del livello
+	
+	bordi = Array(4); 
+	pavimenti= Array(0); 
+	cataste=Array(0);
+	cubi = Array(0); 
+	cilindri=Array(0);
+	piramidi = Array(0);
+	archi = Array(0);
+	cols = Array(0);
+	sfere = Array(0);
+	lights = Array(0);
+	rampe=Array(0);
+	torri=Array(0);
+	alberi=Array(0);
+	materials=Array(0);
+	meshImportate=Array(0);
+	skyboxImageName=Array(6);
+	skyboxTex=Array(6);
+	
+	/* materiali */
+	var concrete=CVmMaterial();
+	var t_concrete=CVmTexture("mat.jpg");
+	concrete.SetTexture(t_concrete);
+	concrete.ChangeTextureParams(VR_U_TILING,10);
+	aadd(materials, concrete);
+	
+	var erba=CVmMaterial();
+	var t_erba=CVmTexture("grass2.jpg");
+	erba.SetTexture(t_erba);
+	erba.ChangeTextureParams(VR_U_TILING,20);
+	erba.ChangeTextureParams(VR_V_TILING,20);
+	aadd(materials, erba);
+	
+	var pavMarmo=CVmMaterial();
+	var t_pavMarmo=CVmTexture("mar.jpg");
+	pavMarmo.SetTexture(t_pavMarmo);
+	pavMarmo.ChangeTextureParams(VR_U_TILING,5);
+	pavMarmo.ChangeTextureParams(VR_V_TILING,5);
+	aadd(materials, pavMarmo);
+	
+	var sabbia=CVmMaterial();
+	var t_sabbia=CVmTexture("sand.jpg");
+	sabbia.SetTexture(t_sabbia);
+	sabbia.ChangeTextureParams(VR_U_TILING,5);
+	sabbia.ChangeTextureParams(VR_V_TILING,5);
+	aadd(materials, sabbia);
+	
+	var tetto=CVmMaterial();
+	var t_tetto=CVmTexture("roof.jpg");
+	tetto.SetTexture(t_tetto);
+	tetto.ChangeTextureParams(VR_U_TILING,2);
+	tetto.ChangeTextureParams(VR_V_TILING,2);
+	aadd(materials, tetto);
+	
+	var wood=CVmMaterial();
+	var t_wood=CVmTexture("bark.jpg");
+	wood.SetTexture(t_wood, 0);
+	wood.SetTexture(t_wood, 1);//canale secondario
+	wood.ChangeTextureParams(VR_U_TILING,2);
+	wood.ChangeTextureParams(VR_V_TILING,2);
+	aadd(materials, wood);
+	
+	
+	var bricks=CVmMaterial();
+	var t_bricks=CVmTexture("bricks.jpg");
+	bricks.SetTexture(t_bricks);
+	bricks.ChangeTextureParams(VR_U_TILING,0.5);
+	bricks.ChangeTextureParams(VR_V_TILING,0.5);
+	aadd(materials, bricks);
+	
+	var houseWall=CVmMaterial();
+	var t_houseWall=CVmTexture("housewall.jpg");
+	houseWall.SetTexture(t_houseWall);
+	houseWall.ChangeTextureParams(VR_U_TILING,5);
+	houseWall.ChangeTextureParams(VR_V_TILING,5);
+	aadd(materials, houseWall);
+	
+	var kitchenCloth=CVmMaterial();
+	var t_kitchenCloth=CVmTexture("kitchencloth.png");
+	kitchenCloth.SetTexture(t_kitchenCloth);
+	aadd(materials, kitchenCloth);
+	
+	var whiteMarble=CVmMaterial();
+	var t_whiteMarble=CVmTexture("whiteMarble.jpg");
+	whiteMarble.SetTexture(t_whiteMarble);
+	whiteMarble.ChangeTextureParams(VR_U_TILING,5);
+	whiteMarble.ChangeTextureParams(VR_V_TILING,5);
+	aadd(materials, whiteMarble);
+	
+	var woodenFence=CVmMaterial();
+	var t_woodenFence=CVmTexture("woodenfence.jpg");
+	woodenFence.SetTexture(t_woodenFence);
+	aadd(materials, woodenFence);
+	
+	var lampGlass=CVmMaterial();
+	lampGlass.ambient   = [1.0, 1.0, 1.0, 0.1];
+	lampGlass.diffuse   = [1.0, 1.0, 1.0, 0.1];
+	lampGlass.specular  = [1.0, 1.0, 1.0, 0.1];
+	lampGlass.shininess = 128;
+	aadd(materials, lampGlass);
+		
+	var metal=CVmMaterial();
+	var t_metal=CVmTexture("metal.jpg");
+	metal.SetTexture(t_metal);
+	metal.specular  = [1.0, 1.0, 1.0, 1.0];
+	metal.shininess = 10;
+	aadd(materials, metal);
+		
+	var metalR=CVmMaterial();
+	var t_metalR=CVmTexture("metal.jpg");
+	metalR.SetTexture(t_metalR);
+	metalR.ambient   = [0.3, 0.0, 0.0, 1.0];
+	metalR.diffuse   = [0.3, 0.0, 0.0, 1.0];
+	metalR.specular  = [0.1, 0.1, 0.1, 1.0];
+	metalR.shininess = 10;
+	aadd(materials, metalR);
+		
+	var metalB=CVmMaterial();
+	var t_metalB=CVmTexture("metal.jpg");
+	metalB.SetTexture(t_metalB);
+	metalB.ambient   = [0.0, 0.0, 0.3, 1.0];
+	metalB.diffuse   = [0.0, 0.0, 0.3, 1.0];
+	metalB.specular  = [0.1, 0.1, 0.1, 1.0];
+	metalB.shininess = 10;
+	aadd(materials, metalB);
+	
+	var win=CVmMaterial();
+	var t_win=CVmTexture("window.jpg");
+	win.SetTexture(t_win);
+	aadd(materials, win);
+
+	/* Oggetti */
+	var m_albero=CVMNewMesh("secco.aam");
+	m_albero.CenterBoundingBox();
+	m_albero.Normalize(20);
+	m_albero.forceMaterial(materials[5]); 
+	aadd(meshImportate, m_albero);
+	
+	/* luci*/
+	SetAmbientLight (0.90,0.90,0.90); 	
+	
+	var mainLight=CVmLight(); //luce principale su cui sono calcolate le ombre
+	var posMainLight = [50.0,70.0,175.0];	
+	mainLight.SetPosition(posMainLight);
+	mainLight.SetDiffuse(1, 1, 1);
+	aadd(lights, mainLight);	
+	
+	/* 
+	var expLight=CVmLight(); //chiamata nel punto di esplosione
+	var posExpLight = [-300.0,-300.0,-300.0];	
+	expLight.SetPosition(posExpLight);
+	expLight.SetDiffuse(1, 1, 1);
+	expLight.SetAmbient(1, 1, 1);
+	//aadd(lights, expLight);
+	* 
+	*/
+}
+
+/*elementi non letti da testo */
+function GeneratoreLivelli::nonParsed(){
+	
+	/*skybox */
+	skyboxImageName[0]= "front";
+	skyboxImageName[1]= "left";
+	skyboxImageName[2]="back";
+	skyboxImageName[3]="right";
+	skyboxImageName[4]="top";
+	skyboxImageName[5]="bottom";
+	for(var i=0; i<len(skyboxImageName); i++){
+		var thisImage="indoor2\\"+skyboxImageName[i]+".jpg";
+		skyboxTex[i] = CVmTexture(thisImage);		
+		glBindTexture(GL_TEXTURE_2D, skyboxTex[i].id);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);	
+	}
+	
+	/*bordi livello */
+	var min = Array(4);
+	min[0]=[-50,0,-50];
+	min[1]=[50,0,50];
+	min[2]=[-50,0,50];
+	min[3]=[-50,0,50];
+	var max = Array(4);
+	max[0]=[50,5,-50];
+	max[1]=[50,5,-50];
+	max[2]=[50,5,50];
+	max[3]=[-50,5,-50];
+	var m_muro; 
+	for (var i=0; i<4;i++){ //4 muri uguali, cambia solo la posizione	
+	//(minx,miny,minz)(maxlunghezza, maxaltezza, maxangolazione) profondita
+		m_muro=CVmNewMesh(VRP_box,1,min[i],max[i],2);	 
+		m_muro.ForceMaterial(materials[0]); //materiale a mesh
+		bordi[i]=CVmObj(m_muro);//mesh a oggetto
+	}
+		
+	/* tavolo e pavimento */	
+	var t_terreno; 
+	var m_terreno; 
+	var o_terreno;
+	var m_terreno2;
+	var o_terreno2;
+	m_terreno=CVmNewMesh(VRP_PLANE,1,[50,0,50],[-50, 0,-50],1,2);	 
+	m_terreno.ForceMaterial(materials[1]); 
+	o_terreno=CVmObj(m_terreno);
+	aadd(pavimenti, o_terreno);
+	m_terreno2=CVmNewMesh(VRP_box,1,[-50,-1,-50],[-50,-0.99,50],100);	 
+	o_terreno2=CVmObj(m_terreno2);
+	aadd(cubi, o_terreno2);
+	
+	var t_table; 
+	var m_table; 
+	var o_table;
+	m_table=CVmNewMesh(VRP_PLANE,1,[100,-1,100],[-100, -1,-100],1,2);	 
+	m_table.ForceMaterial(materials[8]); 
+	o_table=CVmObj(m_table);
+	aadd(pavimenti, o_table);			
+	
+}
+
+function GeneratoreLivelli::albero(elemento, posizione){
+	var o_albero=CVmObj(meshImportate[elemento]);
+	var ultimoAlbero=(meshImportate[elemento]);
+	var data=ultimoAlbero.getBoundingBox();
+	posizione[1]+=data[4]; 
+	o_albero.setPosition(posizione);
+	o_albero.setRotation(rand(360), 0,1,0); 
+	aadd(alberi, o_albero);
+}
+
+function GeneratoreLivelli::Cubo(materiale, posizione, dimensioni, scala){
+	var mat_cubo;	
+	var t_cubo; 
+	var o_cubo;
+	var m_cubo; 
+	var b=dimensioni[0]*scala;
+	var h=dimensioni[1]*scala;
+	var depth=dimensioni[2]*scala;
+
+	m_cubo=CVmNewMesh(VRP_box,1,[0,0,0],[b,h,0],depth);	 
+	m_cubo.ForceMaterial(materials[materiale]);
+
+	o_cubo=CVmObj(m_cubo);
+	o_cubo.SetPosition(posizione);
+	aadd(cubi, o_cubo);
+}
+
+function GeneratoreLivelli::cilindro(materiale, posizione, dimensioni, scala){
+	var t_cilindro; 
+	var o_cilindro;
+	var m_cilindro; 
+	var r=dimensioni[0]*scala/4;
+	var h=dimensioni[1]*scala;
+	var segs=30;
+	m_cilindro=CVmNewMesh(VRP_CYLINDER,segs,r,h);
+	m_cilindro.ForceMaterial(materials[materiale]); 
+	o_cilindro=CVmObj(m_cilindro);
+	o_cilindro.SetPosition(posizione);
+	aadd(cilindri, o_cilindro);
+}
+
+function GeneratoreLivelli::Pavimento(materiale, pp, dp, s){
+	var posPav = pp;
+	var dimPav= dp;
+	var scala=s;
+	var mat_pavimento;	
+	var t_pavimento; 
+	var o_pavimento;
+	var m_pavimento; 	
+	var b=dimPav[0]*scala;
+	var h=dimPav[1]*scala;
+	var p=dimPav[2]*scala;
+	m_pavimento=CVmNewMesh(VRP_PLANE,1,[0,h,0],[b,h,-p],1,2);
+	m_pavimento.ForceMaterial(materials[materiale]); 
+	o_pavimento=CVmObj(m_pavimento);
+	o_pavimento.SetPosition(posPav);
+	aadd(pavimenti, o_pavimento);
+}
+
+function GeneratoreLivelli::Rampa(materiale, posizione, dimensioni, scala){
+	var mat_rampa;	
+	var t_rampa; 
+	var o_rampa;
+	var m_rampa; 
+	var b=dimensioni[0]*scala;
+	var h=dimensioni[1]*scala;
+	var p=dimensioni[2]*scala;
+	//(lunghezza, altezza, angolazione) profondita
+	m_rampa=CVmNewMesh(VRP_box,1,[0,0,0],[b,h,0],p);	 
+	m_rampa.ForceMaterial(materials[materiale]); 
+	o_rampa=CVmObj(m_rampa);
+	o_rampa.SetPosition(posizione);
+	aadd(rampe, o_rampa);
+}
+
+function GeneratoreLivelli::lamp(materiale, posizione, h){
+	//fusto
+	var mat_lamp;	
+	var t_lamp; 
+	var o_lamp;
+	var m_lamp; 
+	m_lamp=CVmNewMesh(VRP_COLUMN,10,0.2,h);
+	o_lamp=CVmObj(m_lamp);
+	o_lamp.SetPosition(posizione);
+	aadd(cols, o_lamp);
+	
+	var o_palla;
+	var m_palla;
+	m_palla=CVmNewMesh(VRP_SPHERE, 10, 0.5,1);
+	m_palla.ForceMaterial(materials[11]);
+	o_palla=CVmObj(m_palla);
+	posizione[1]+=h+0.5;
+	o_palla.SetPosition(posizione);
+	aadd(sfere, o_palla);
+	
+}
+
+function GeneratoreLivelli::catasta(pos, p, s, r){
+	var posCat=pos;
+	var catasta=cvmObj();
+	catasta.setPosition(posCat);
+	var offsetX=0;
+	var offsetY=0;
+	var offsetZ=0;
+	var dim=[2,10,2];
+	var placedRows=0;
+	var placedCyls=0;
+	var scala=s;
+	var piani=p;
+	var rotazione=r;
+	offsetX=dim[2]/4;
+	for(var j=0; j<piani; j++) {
+		var rowLength=piani-placedRows;
+		for (var j=0; j<rowLength; j++){
+			cilindro(5, posCat, dim, scala);
+			catasta.addChild(cilindri[len(cilindri)-1], offsetX,offsetY,offsetZ);
+			adel(cilindri, len(cilindri)-1); //non ci serve più: viene trattato come un unico oggetto "catasta"
+			offsetZ+=dim[0]/2;
+			placedCyls++;
+		}
+		placedRows++;	
+		offsetX+=dim[2]/2;
+		offsetZ-=dim[0]/2*(piani-placedRows)+dim[0]/4;
+	}
+	aadd(cataste,catasta);
+	cataste[len(cataste)-1].rotate(90,0,0,1);
+	cataste[len(cataste)-1].rotate(rotazione,1,0,0);
+	}
+
+function GeneratoreLivelli::torre(materiale, posizione, piani, scala){
+	output("scala: ");
+	outputln(scala);
+	var dimensioni=[8, 8*piani,8];
+	var h=4;
+	var ip=(sqrt(8^2+h^2)); //lunghezza della tavola inclinata
+	var dimensioniRampa=[ip,0.5,2];
+	var b=dimensioni[0]+(dimensioniRampa[2]*2); //lunghezza della tavola sdraiata, sommata la larghezza della rampa
+	var posizioneRampa=posizione;
+	
+	for(var i=0; i<piani; i++) {
+		posizioneRampa[2]+=dimensioniRampa[2]*scala;
+		dimensioniRampa[0]=ip;
+		Rampa(5, posizioneRampa, dimensioniRampa, scala);
+		rampe[(len(rampe))-1].rotate(22.5, 0,0,1);
+		
+		posizioneRampa[0]+=dimensioniRampa[2]/2+dimensioniRampa[0];
+		posizioneRampa[1]+=h-dimensioniRampa[1];
+		dimensioniRampa[0]=b;
+		Rampa(5, posizioneRampa, dimensioniRampa, scala);
+		rampe[(len(rampe))-1].rotate(90, 0,1,0);
+				
+		posizioneRampa[2]-=dimensioniRampa[0];
+		posizioneRampa[0]-=dimensioniRampa[2];
+		dimensioniRampa[0]=ip;
+		Rampa(5, posizioneRampa, dimensioniRampa, scala);
+		rampe[(len(rampe))-1].rotate(180, 0,1,0);
+		rampe[(len(rampe))-1].rotate(22.5, 0,0,1);
+		
+		posizioneRampa[0]-=dimensioniRampa[0]+dimensioniRampa[2]/2; 
+		posizioneRampa[1]+=h-dimensioniRampa[1];
+		dimensioniRampa[0]=b-dimensioniRampa[2]+dimensioniRampa[2];
+		Rampa(5, posizioneRampa, dimensioniRampa, scala);
+		rampe[(len(rampe))-1].rotate(-90, 0,1,0);
+		
+		posizioneRampa[0]+=dimensioniRampa[2]; 
+		posizioneRampa[1]+=0.5;
+		posizioneRampa[2]+=dimensioniRampa[0]-dimensioniRampa[2];
+	}
+	var posCilindro=posizione;
+	posCilindro[0]+=dimensioni[0]/2;
+	posCilindro[2]-=dimensioni[0]/2;
+	dimensioni[1]-=0.51*piani;
+	cilindro(5, posCilindro, dimensioni, scala); 
+	dimensioni[1]+=0.01;
+	pavimento(10,posizione,dimensioni,scala);
+}
+
+function GeneratoreLivelli::casa(materiale, posizione, dimensioni, scala, orientamento){
+	/*fronte */
+	var posWin1=vector(3); //sx
+	var dimWin1=vector(3);
+	posWin1=+posizione;
+	posWin1[1]+=dimensioni[1]*scala/2+scala/3;
+	dimWin1=[0.01,0.25,0.2]*scala;
+	cubo(15,posWin1, dimWin1, scala);
+	cubi[len(cubi)-1].rotate(90, 0,1,0);
+	cubi[len(cubi)-1].move(-0.01, 0, dimensioni[0]*scala/2-dimWin1[2]*scala*3);
+	
+	var posWin2=vector(3); //dx
+	var dimWin2=vector(3);
+	posWin2=+poswin1;
+	dimWin2+=dimwin1;
+	cubo(15,posWin2, dimWin2, scala);
+	cubi[len(cubi)-1].rotate(90, 0,1,0);
+	cubi[len(cubi)-1].move(-0.01, 0, dimensioni[0]*scala/2+dimWin1[2]*scala*4);
+	
+	var posWin3=vector(3); //dx
+	var dimWin3=vector(3);
+	posWin3=+poswin1;
+	dimWin3+=dimwin1;
+	cubo(15,posWin3, dimWin3, scala);
+	cubi[len(cubi)-1].rotate(90, 0,1,0);
+	cubi[len(cubi)-1].move(-0.01, 0, dimensioni[0]*scala/2+dimWin1[2]*scala/2);
+	
+	/*lato sx */
+	var posWin4=vector(3); //sx
+	var dimWin4=vector(3);
+	posWin4=+posizione;
+	posWin4[1]+=dimensioni[1]*scala/2+scala/3;
+	dimWin4=[0.01,0.25,0.2]*scala;
+	cubo(15,posWin1, dimWin4, scala);
+	cubi[len(cubi)-1].move(-0.01, 0, -dimensioni[0]*scala/2-dimWin1[2]*scala*3);
+	
+	var posWin5=vector(3); //cx
+	var dimWin5=vector(3);
+	posWin5=+posizione;
+	posWin5[1]+=dimensioni[1]*scala/2+scala/3;
+	dimWin5=[0.01,0.25,0.2]*scala;
+	cubo(15,posWin5, dimWin5, scala);
+	cubi[len(cubi)-1].move(-0.01, 0, -dimensioni[0]*scala/2+dimWin1[2]*scala/2);
+	
+	var posWin6=vector(3); //dx
+	var dimWin6=vector(3);
+	posWin6=+posizione;
+	posWin6[1]+=dimensioni[1]*scala/2+scala/3;
+	dimWin6=[0.01,0.25,0.2]*scala;
+	cubo(15,posWin6, dimWin6, scala);
+	cubi[len(cubi)-1].move(-0.01, 0, dimensioni[0]*scala/2-dimWin1[2]*scala*6);
+	
+	/*lato dx */
+	var posWin7=vector(3); //sx
+	var dimWin7=vector(3);
+	posWin7=+posWin4;
+	dimWin7=[0.01,0.25,0.2]*scala;
+	posWin7[0]+=dimensioni[0]*scala+dimWin7[0]*scala;
+	cubo(15,posWin7, dimWin7, scala);
+	cubi[len(cubi)-1].move(0, 0, -dimensioni[0]*scala/2-dimWin1[2]*scala*3);
+	
+	var posWin8=vector(3); //cx
+	var dimWin8=vector(3);
+	posWin8=+posWin4;
+	dimWin8=[0.01,0.25,0.2]*scala;
+	posWin8[0]+=dimensioni[0]*scala+dimWin8[0]*scala;
+	cubo(15,posWin8, dimWin8, scala);
+	cubi[len(cubi)-1].move(0, 0, -dimensioni[0]*scala/2+dimWin1[2]*scala/2);
+	
+	var posWin9=vector(3); //dx
+	var dimWin9=vector(3);
+	posWin9=+posWin4;
+	dimWin9=[0.01,0.25,0.2]*scala;
+	posWin9[0]+=dimensioni[0]*scala+dimWin9[0]*scala;
+	cubo(15,posWin9, dimWin9, scala);
+	cubi[len(cubi)-1].move(0, 0, dimensioni[0]*scala/2-dimWin1[2]*scala*6);
+		
+	var posizionePiramide=posizione;
+	posizionePiramide[1]+=dimensioni[1]*scala;
+	var dimensioniPiramide=dimensioni;
+	dimensioniPiramide[1]/=3;
+	piramide(4, posizionePiramide, dimensioniPiramide, scala); //piramide vuole raggio
+	
+	var posizioneArco=posizione;
+	var dimensioniArco=vector(3);
+	var spessore=0.2; //spessore muro
+	dimensioniArco[0]=dimensioni[0]/5;
+	dimensioniArco[1]=dimensioni[1]/2;
+	dimensioniArco[2]=spessore;
+	posizioneArco[0]+=dimensioniArco[0]*scala*2.5;
+	arco(7,posizioneArco,dimensioniArco,scala,0);
+	
+	var posizionePrimoSeg=posizione;
+	var dimensioniPrimoSeg=vector(3);
+	dimensioniPrimoSeg[2]=spessore;
+	dimensioniPrimoSeg[1]=dimensioni[1];
+	dimensioniPrimoSeg[0]=dimensioni[0]/2-dimensioniArco[0];
+	cubo(7, posizionePrimoSeg, dimensioniPrimoSeg, scala);
+	
+	var posizioneSecondoSeg=posizioneArco;
+	var dimensioniSecondoSeg=vector(3);
+	posizioneSecondoSeg[1]+=dimensioniArco[1]*scala;
+	posizioneSecondoSeg[0]-=dimensioniArco[0]*scala;
+	dimensioniSecondoSeg[0]=dimensioniArco[0]*2; 
+	dimensioniSecondoSeg[1]=dimensioni[1]-dimensioniArco[1];
+	dimensioniSecondoSeg[2]=spessore;
+	cubo(7, posizioneSecondoSeg, dimensioniSecondoSeg, scala);
+	
+	var posizioneTerzoSeg=posizioneArco;
+	var dimensioniTerzoSeg=dimensioniPrimoSeg;
+	posizioneTerzoSeg[0]+=dimensioniArco[0]*scala;
+	cubo(7, posizioneTerzoSeg, dimensioniTerzoSeg, scala);
+	
+	var posizioneSecondaParete=posizione;
+	var dimensioniSecondaParete=dimensioni;
+	dimensioniSecondaParete[0]=spessore;
+	cubo(7, posizioneSecondaParete, dimensioniSecondaParete, scala);
+	
+	var posizioneTerzaParete=posizione;
+	var dimensioniTerzaParete=dimensioni;
+	dimensioniTerzaParete[0]=spessore; 
+	posizioneTerzaParete[0]+=dimensioniTerzaParete[2]*scala-(spessore*scala);
+	cubo(7, posizioneTerzaParete, dimensioniTerzaParete, scala);
+	
+	var posizioneQuartaParete=posizione;
+	var dimensioniQuartaParete=dimensioni;
+	dimensioniQuartaParete[0]=dimensioni[2];
+	dimensioniQuartaParete[2]=spessore;
+	posizioneQuartaParete[2]-=dimensioniQuartaParete[0]*scala-(spessore*scala);
+	cubo(7, posizioneQuartaParete, dimensioniQuartaParete, scala);
+}
+
+
+function GeneratoreLivelli::villa(materiale, posizione, dimensioni, scala, orientamento){
+	//basamento
+	var dimensioniScalino=vector(3);
+	dimensioniScalino[0]+=dimensioni[0];
+	dimensioniScalino[1]+=0.125*scala;
+	dimensioniScalino[2]+=dimensioni[0]+scala;
+	var posizioneScalino=posizione;
+	output("posizone scalino: ");
+	outputln(posizioneScalino);
+	output("diensioni scalino: ");
+	outputln(dimensioniScalino);
+	posizioneScalino[2]+=scala;
+	cubo(0,posizioneScalino,dimensioniScalino,scala);
+	
+	//pavimento
+	var dimensioniPavimento=dimensioniScalino;
+	var posizionePavimento=posizioneScalino;
+	posizionePavimento[1]+=0.01;
+	pavimento(2,posizionePavimento,dimensioniPavimento,scala);
+	
+	//colonne
+	var altezzaColonna=0;
+	altezzaColonna+=dimensioni[1]*scala/2+dimensioniScalino[1]; 
+	var passo=dimensioni[0]*scala/6;
+	var posizioneColonna=posizioneScalino;
+	posizioneColonna[0]+=passo;
+	posizioneColonna[1]+=dimensioniScalino[1]*scala;
+	posizioneColonna[2]-=1;
+	for(var i=1; i<6; i++){
+		if(i!=3) {
+			var t_colonna; 
+			var o_colonna;
+			var m_colonna; 
+			m_colonna=CVmNewMesh(VRP_COLUMN,10,0.2,altezzaColonna);
+			m_colonna.ForceMaterial(materials[9]);
+			o_colonna=CVmObj(m_colonna);
+			o_colonna.SetPosition(posizioneColonna);
+			aadd(cols, o_colonna);
+		}
+		posizioneColonna[0]+=passo;	
+	}	
+	
+	//rampa
+	var dimRampa=dimensioniScalino;
+	dimRampa[2]/=8;
+	var posRampa=posizioneScalino;
+	posRampa[1]-=dimRampa[1]*scala*1.1;
+	posRampa[2]+=dimRampa[2]*scala*0.75;
+	rampa(0,posRampa,dimRampa,scala);
+	var n=len(rampe);
+	rampe[n-1].rotate(25, 1,0,0);
+
+	//bordi
+	var dimensioniBordo=vector(3); 
+	dimensioniBordo[0]=0.01*scala;
+	dimensioniBordo[1]=altezzaColonna*0.5/scala;
+	dimensioniBordo[2]=scala;	
+	var posizioneBordo=posizioneScalino;
+	posizioneBordo[1]=dimensioniScalino[1]*scala;
+	cubo(10,posizioneBordo,dimensioniBordo,scala);
+	posizioneBordo[0]+=(dimensioni[0]-dimensioniBordo[0])*scala;
+	cubo(10,posizioneBordo,dimensioniBordo,scala);
+	
+	//sovracolonnato
+	var dimSovracol=vector(3);
+	dimSovracol[0]=dimensioni[0];
+	dimSovracol[1]=0.01*scala;
+	dimSovracol[2]=scala;
+	var posSovracol=posizioneScalino;
+	posSovracol[1]=posizioneColonna[1]+altezzaColonna;
+	cubo(7,posSovracol,dimSovracol,scala);
+	
+	//edificio
+	posizione[2]=posizioneScalino[2]-dimSovracol[2]*scala;
+	posizione[1]+=dimensioniScalino[1]*scala;
+	casa(7,posizione,dimensioni,scala );
+}
+
+function GeneratoreLivelli::arco(materiale, posizione, dimensioni, scala, orientamento){
+	var or=orientamento;
+	var t_arco; 
+	var o_arco;
+	var m_arco; 
+	var b=dimensioni[0]*scala;
+	var h=dimensioni[1]*scala;
+	var p=dimensioni[2]*scala;
+	//(lunghezza, altezza, angolazione) profondita
+	m_arco=CVmNewMesh(VRP_ARCH,10,b,h,p);		
+	m_arco.ForceMaterial(materials[materiale]); 
+	o_arco=CVmObj(m_arco);
+	if(or==1){
+		o_arco.rotate(90,0,1,0);
+	}
+	o_arco.SetPosition(posizione);
+	aadd(archi, o_arco);
+}
+
+function GeneratoreLivelli::Piramide(materiale, posizione, dimensioni, scala){ 
+	var t_piramide; 
+	var o_piramide;
+	var m_piramide; 
+	var b=dimensioni[0]*scala;
+	var h=dimensioni[1]*scala;
+	var segs=4;
+	m_piramide=CVmNewMesh(VRP_PYRAMID,4,b,h);
+	m_piramide.ForceMaterial(materials[materiale]); 
+	o_piramide=CVmObj(m_piramide);
+	o_piramide.SetPosition(posizione);
+	aadd(piramidi, o_piramide);
+}
+
+function GeneratoreLivelli::Gazebo(materiale, posizione, dimensioni, scala){ 
+	var b=dimensioni[0]*scala; //moltiplica qua e ai singoli componenti passa 1
+	var h=dimensioni[1]*scala;
+	var dimLato=[2,h,2,1];
+	var dimPir=[b,3,1];
+	var nuovaPos=posizione;
+	var prima=nuovaPos;
+	var dimArco=vector(3);
+	var posArco=vector(3);
+	dimArco[0]=b/2-2;
+	dimArco[1]=dimArco[0];
+	dimArco[2]=2;
+	prima[0]+=2;
+	cubo(materiale, prima, dimLato, 1);	
+	nuovaPos[0]+=b;
+	cubo(materiale, nuovaPos, dimLato, 1);
+	nuovaPos[2]+=b-2;
+	cubo(materiale, nuovaPos, dimLato, 1);
+	nuovaPos[0]-=b-2;
+	cubo(materiale, nuovaPos, dimLato, 1);
+	nuovaPos[1]+=h;
+	piramide(materiale, nuovaPos,dimPir, 1);
+	posArco[0]=nuovaPos[0]+2;
+	posArco[1]=nuovaPos[1]-dimArco[1];
+	posArco[2]=nuovaPos[2]-dimArco[1]-2;
+	arco(materiale, posArco,dimArco,1,1);
+	posArco[0]=nuovaPos[0]+=dimArco[1]+2; 
+	posArco[2]=nuovaPos[2];
+	arco(materiale, posArco,dimArco,1,0);
+	posArco[0]=nuovaPos[0]+=dimArco[1]+2; 
+	posArco[2]=nuovaPos[2]-=dimArco[1]+2;
+	arco(materiale, posArco,dimArco,1,1);
+	posArco[0]=nuovaPos[0]-=dimArco[1]+2;
+	posArco[2]=nuovaPos[2]-=dimArco[1];
+	arco(materiale, posArco,dimArco,1,0);
+}
+
+
+function GeneratoreLivelli::parseLevel(){
+	var i;
+	var j;
+	var lines = LoadFile("level2.txt"); //carica file di testo, mette ogni riga in un array
+	var rows = len (Lines) - 1;
+	var columns = len (Lines[0]);
+	var posizione=vector(3);
+	var dimensioni=vector(3);
+	var scala=1;
+	//trace(rows,columns);
+	for (i=0; i<rows; i++) {
+		for (j=0; j<columns; j++) {
+			if (lines[i][j] =="K") {
+				var rotazione=0;
+			 	posizione = [j-50, 0, i-50];
+			 	var piani=val(lines[i][j+1]);
+			 	scala = val(lines[i][j+2]);
+				rotazione = val((lines[i][j+3])+(lines[i][j+4])+(lines[i][j+5]));
+			 	catasta(posizione, piani, scala, rotazione);		 	
+			}
+					
+			if (lines[i][j] =="C") {
+			 	posizione = [j-50, 0, i-50];
+			 	dimensioni = [val(lines[i][j+1]), val(lines[i][j+2]), val(lines[i][j+1]) ];
+			 	scala = val(lines[i][j+3]);
+			 	var orientamento =val(lines[i][j+4]);
+			 	orientamento=0;
+			 	casa(0, posizione, dimensioni, scala, orientamento);		 	
+			}
+			if (lines[i][j] =="V") {
+			 	posizione = [j-50, 0, i-50];
+			 	dimensioni = [val(lines[i][j+1]), val(lines[i][j+2]), val(lines[i][j+1]) ];
+			 	scala = val(lines[i][j+3]);
+			 	var orientamento =val(lines[i][j+4]);
+			 	orientamento=0;
+			 	villa(0, posizione, dimensioni, scala, orientamento);		 	
+			}
+			else if (lines[i][j] =="B"){
+				posizione = [j-50, 0, i-50];
+			 	dimensioni[0] = val(lines[i][j+1]); 
+			 	dimensioni[1] = val(lines[i][j+2]);
+			 	dimensioni[2] = val(lines[i][j+3]);
+			 	scala= val(lines[i][j+4]);
+			 	cubo(0, posizione, dimensioni, scala);
+			}
+			else if (lines[i][j] =="G"){
+				posizione = [j-50, 0, i-50];
+			 	dimensioni = [val(lines[i][j+1]), val(lines[i][j+2]), val(lines[i][j+1])];
+			 	scala= val(lines[i][j+3]);
+			 	gazebo(9, posizione, dimensioni, scala);
+	
+			}
+			else if (lines[i][j] =="P"){
+				posizione = [j-50, 0, i-50];
+			 	dimensioni = [val(lines[i][j+1]), val(lines[i][j+2])];
+			 	scala= val(lines[i][j+3]);
+			 	piramide(3, posizione, dimensioni, scala);
+			}
+			else if (lines[i][j] =="M"){
+				posizione = [j-50, 0, i-50];
+			 	dimensioni[0] = 1; 
+			 	dimensioni[1] = 3;
+			 	dimensioni[2] = 1;
+			 	scala= 1;
+			 	cubo(6, posizione, dimensioni, scala);
+			}
+			else if (lines[i][j] =="L"){
+				posizione = [j-50, 0, i-50];
+			 	var h = val(lines[i][j+1]);
+			 	lamp(0, posizione, h);
+			}
+			else if (lines[i][j] =="T"){
+				posizione = [j-50, 0, i-50];
+				var m = val(lines[i][j+1]);
+			 	var h = val(lines[i][j+2]);
+			 	var scala=val(lines[i][j+3]);
+			 	torre(m, posizione, h, scala);
+			}
+			else if (lines[i][j]=="A"){
+				posizione = [j-50, 0, i-50];
+				var elemento = val(lines[i][j+1]);
+				albero(elemento, posizione);
+			}		
+		}
+	} 
+}
+
+function GeneratoreLivelli::DrawSkybox(){
+	var dir = CameraGetCurrent().GetDirection();
+	var c = 3;
+	glPushMatrix();
+    glLoadIdentity();
+    gluLookAt(0,0,0,
+        	 dir[0],dir[1],dir[2],
+        	 0,1,0);
+    glDisable(GL_DEPTH_TEST);
+	glDisable(GL_LIGHTING);
+    glColor(1,1,1,1);
+
+   //front
+   SetActiveTexture(skyboxTex[0]);
+   glBegin(GL_QUADS);
+        glTexCoord(1, 1); glVertex( -c, -c, -c );
+        glTexCoord(0, 1); glVertex(  c, -c, -c );
+        glTexCoord(0, 0); glVertex(  c,  c, -c );
+        glTexCoord(1, 0); glVertex( -c,  c, -c );
+   glEnd();
+
+   //left
+   SetActiveTexture(skyboxTex[1]);
+   glBegin(GL_QUADS);
+       glTexCoord(0, 1); glVertex( -c, -c, -c );
+       glTexCoord(0, 0); glVertex( -c,  c, -c );
+       glTexCoord(1, 0); glVertex( -c,  c,  c );
+       glTexCoord(1, 1); glVertex( -c, -c,  c );
+   glEnd();
+
+
+   //right
+   SetActiveTexture(skyboxTex[3]);
+   glBegin(GL_QUADS);
+       glTexCoord(0, 1); glVertex(  c, -c,  c );
+       glTexCoord(0, 0); glVertex(  c,  c,  c );
+       glTexCoord(1, 0); glVertex(  c,  c, -c );
+       glTexCoord(1, 1); glVertex(  c, -c, -c );
+   glEnd();
+
+
+   //back
+   SetActiveTexture(skyboxTex[2]);
+   glBegin(GL_QUADS);
+        glTexCoord(0, 1); glVertex( -c, -c,  c );
+        glTexCoord(0, 0); glVertex( -c,  c,  c );
+        glTexCoord(1, 0); glVertex(  c,  c,  c );
+        glTexCoord(1, 1); glVertex(  c, -c,  c );
+   glEnd();
+
+   //top
+   SetActiveTexture(skyboxTex[4]);
+   glBegin(GL_QUADS);
+       glTexCoord(1, 0); glVertex( -c,  c, -c );
+       glTexCoord(1, 1); glVertex(  c,  c, -c );
+       glTexCoord(0, 1); glVertex(  c,  c,  c );
+       glTexCoord(0, 0); glVertex( -c,  c,  c );
+   glEnd();
+
+    //bottom
+	SetActiveTexture(skyboxTex[5]);
+    glBegin(GL_QUADS);
+        glTexCoord(1, 1); glVertex( -c, -c, -c );
+        glTexCoord(0, 1); glVertex( -c, -c,  c );
+        glTexCoord(0, 0); glVertex(  c, -c,  c );
+        glTexCoord(1, 0); glVertex(  c, -c, -c );
+    glEnd();
+
+   glEnable(GL_LIGHTING);
+   glEnable(GL_DEPTH_TEST);
+   glPopMatrix();
+}
+
+function GeneratoreLivelli::drawLevel(){
+	for(var i=0; i<len(cataste);i++){
+		cataste[i].draw();
+	}
+	
+	for (var i=0; i<len(pavimenti); i++) {
+	    pavimenti[i].Draw();
+	}
+	for (var i=0; i<4; i++) {
+		bordi[i].Draw();
+	}
+	for (var i=0; i<len(cubi); i++) {
+	    cubi[i].Draw();
+	}
+	for (var i=0; i<len(cilindri); i++) {
+	    cilindri[i].Draw();
+	}
+	for (var i=0; i<len(rampe); i++) {
+	    rampe[i].Draw();
+	}
+	for (var i=0; i<len(piramidi); i++) {
+	    piramidi[i].Draw();
+	}
+	for (var i=0; i<len(archi); i++) {
+	    archi[i].Draw();
+	}
+	for (var i=0; i<len(cols); i++) {
+	    cols[i].Draw();
+	}
+	for (var i=0; i<len(sfere); i++) {
+	    glEnable(gl_blend);
+	    sfere[i].Draw();
+	    glDisable(gl_blend);
+	}
+	for (var i=0; i<len(alberi); i++) {
+	    alberi[i].Draw();
+	}
+	for (var i=0; i<len(lights); i++) {
+		glEnable(GL_LIGHTING);
+	    lights[i].enable();
+	    glDisable(GL_LIGHTING);
+	}
+}

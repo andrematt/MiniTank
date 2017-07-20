@@ -1,0 +1,87 @@
+class Tank {
+	var posizione;
+	var posizionePrecedente;
+	var direzione;
+	var ultimaRotazione;
+	var ultimoSpostamento;
+	var velocita;
+	var fattoreScalaRot;
+	var vita;
+	var statoCollisione;
+	var tipoCollisione;
+	var ultimoPavimento;
+	var ultimaPiramide;
+	var ultimaRampa;
+	var dimensioni;
+	var selectedWeapon;
+	resetta();
+	ruotaSinistra(dt);
+	ruotaDestra(dt);
+	guardaSu(dt);
+	guardaGiu(dt);	
+	muovi(param, dt);
+};
+
+
+function Tank::Tank() {
+posizione=vector(3);
+posizionePrecedente=vector(3);
+direzione=vector(3);
+dimensioni=vector(6);
+velocita=0.01;
+statoCollisione=false;
+selectedWeapon=0;
+tipoCollisione="pavimento";
+ultimaPiramide=-1; 
+ultimaRampa=-1;
+ultimoPavimento=0; //di default è il terreno del livello
+ultimaRotazione=0;
+ultimoSpostamento=0;
+vita = 100;
+}
+
+function Tank::resetta(){
+	vita=100;
+}
+
+function Tank::ruotaSinistra(dt){
+	direzione[0]-=velocita*dt*0.1;
+	ultimaRotazione=velocita*dt*0.1;
+}
+
+function Tank::ruotaDestra(dt){
+	direzione[0]+=velocita*dt*0.1;
+	ultimaRotazione=-velocita*dt*0.1;
+}
+
+function Tank::guardaSu(dt){
+	if (direzione[1]<1.7){ //massima inclinazione
+	direzione[1]+=velocita*dt*0.1;
+	ultimoSpostamento=-velocita*dt;
+	}
+}
+
+function Tank::guardaGiu(dt){
+	if (direzione[1]>-1.7) {
+	direzione[1]-=velocita*dt*0.1;
+	ultimoSpostamento=-velocita*dt;
+	}
+}
+
+function Tank::muovi(param, dt){
+	if(!statoCollisione){ 
+		posizionePrecedente=posizione; 
+	}
+	else {
+		posizione=posizionePrecedente;
+	}
+	if (param=="W"){
+		posizione[0]+=velocita*cos(direzione[0])*dt;
+		posizione[2]+=velocita*sin(direzione[0])*dt;
+	}
+	else if (param=="S"){
+		posizione[0]-=velocita*cos(direzione[0])*dt;
+		posizione[2]-=velocita*sin(direzione[0])*dt;
+	}
+}
+

@@ -1,0 +1,1050 @@
+/* Include s3d symbols */
+
+#include <Script3d.h>
+#include <Camera.s3d.h>
+#include <Tank.s3d>
+#include <Granata.s3d>
+#include <Rocket.s3d>
+#include <Collisioni.s3d>
+#include <GeneratoreLivelli.s3d>
+#include <Utils.s3d>
+
+#define VK_RETURN 0x0D   
+#define VK_ESCAPE 0x1B
+#define VK_SPACE 0x20
+#define VK_LEFT 0x25
+#define VK_UP 0x26
+#define VK_RIGHT 0x27
+#define VK_DOWN 0x28
+
+/* Set global scene parameters */
+SET SCENE_FOV  = 90;
+SET SCENE_NEAR = 2; 
+SET SCENE_FAR  = 200;
+
+/* game status */
+var status_intro; 
+var status_game;
+var status_endGame; 
+var status_sparo; 
+var status_idle; 
+var status_esplosione; 
+var status_postExp;
+var status_controls; 
+var status_options;
+var status_pause;
+
+/*game var */
+var shadows;
+var enableShadows=true;
+var enableSounds=true;
+var gameTime= 0.00001;
+var lastFrameTime;
+var elapsedTime;
+var activePlayer1 = true;
+var mapView=false;
+var cambiaGiocatore=false;
+var keyPression=false;
+var turnTime = 0.00001;
+var tempoPlayer=0;
+var tempoEsplosione=0;
+var tempoIdle=0;
+var vittorieP1=0;
+var vittorieP2=0;
+var test=false;
+var pareggi=0;
+var r = 10; //distanza tank-pointer e camera-tank
+var esitoPartita=Array(3);
+var normaleCollisione=[0,0,0];
+var contatto=[0,0,0];
+var ultimaNormale=[0,1,0];
+var lastActiveWeapon=0;
+var activeWeapon=0;
+var windVect=vector(3);
+var windDir;
+var windInt;
+
+/* menu, grafica e suoni */
+var menuEntriesIntro=Array(3);
+var menuEntriesEnd=Array(2);
+var menuEntriesOptions=Array(2);
+var menuEntriesPause=Array(2);
+var menuPointer=0;
+var manuOptionsPointer=0;
+var esplosione;
+var compass;
+var frameEsplosione;
+var importedLights;
+var skyboxTextures;
+var importedMaterials;
+var images=Array(0);
+var volume=100;
+var sound_powerup;
+var sound_release;
+var sound_explosion;
+var sound_bounce;
+var sound_roll;
+var sound_engine;
+var sound_engineMid;
+
+/* Camera */
+var CamPos = [0.0, 15.0, 0.0]; 
+var CamDir = [10.0, 0.0, 0.0];	
+var Cam2Pos = [50.0, 15.0, 50.0]; 	
+var Cam2Dir = [10.0, 0.0, 0.0];	
+var Cam3Pos = [0.0, 120.0, 0.0]; 	
+var Cam3Dir = [0.01, -0.999, 0.0];	
+
+/* livello e collisioni */	
+var livelloCorrente;
+var collisioniCorrenti;
+
+/* oggetti nel gioco */
+var o_pointer;
+var pos_pointer = [0.0, 5.0, 0.0];
+var o_granata;
+var o_granataMesh;
+var m_granataMesh; 
+var o_rocket;
+var o_rocketMesh;
+var m_rocketMesh; 
+
+/* Giocatore 1*/  
+var char_tank1;
+var o_tank1;
+var o_tank1Mesh;	
+var m_tank1Mesh; 				
+var damageTank1 = 0;
+			
+/* Giocatore 2 */  
+var char_tank2;
+var o_tank2;
+var o_tank2Mesh; 	
+var m_tank2Mesh;
+var damageTank2 = 0;
+
+/* Functions */
+function DrawGrid(col, size); 
+
+function calcolaVento(){
+	windInt=rand(100);
+	windDir=(rand(360)-180)*3.14/180;
+	windVect[0]=cos(windDir)*(windInt*0.001); 
+	windVect[2]=sin(windDir)*(windInt*0.001);
+}
+
+function gestoreTurni(){
+	if ((!KeyPressed(VK_SPACE)&&(!status_sparo)&&(!status_postExp)&&(!status_idle))) { //condizioni per conteggiare lo scorrere del tempo
+		tempoPlayer= getTime()-gameTime;
+	}	
+	if (tempoPlayer >=20000 || cambiaGiocatore) { //cambio dopo 20 secondi a meno che non sia già esploso un proiettile
+		cambiaGiocatore=false;
+		(activePlayer1? activePlayer1=false:activePlayer1=true);
+		collisioniCorrenti.ultimaNormaleGranata=[0,0,0];
+		calcolaVento();
+		tempoPlayer=0.00001;
+		damageTank1=0;
+		damageTank2=0;
+		status_postExp=false;
+		status_idle=true;
+		tempoIdle=getTime();
+	}
+	
+	if (status_idle){ //tempo di idle per cambiare gicatore
+		cameraFree();
+		if(getTime()-tempoIdle>=800){
+			status_idle=false;
+			tempoIdle=0;
+			gameTime = GetTime(); 
+		}
+	}
+}
+
+function switchMapView(){
+	if (!mapView) { //attiva mappa
+		CameraSetPosition(Cam3Pos); 
+		CameraSetDirection(Cam3Dir); 	
+		mapView=true;
+	}
+	else { //cambia cam player
+		mapView=false;
+		if (activePlayer1){
+		 	CameraActivate(0);
+		}
+		else {
+			CameraActivate(1);	
+		}
+	}
+}
+
+function aggiornaPointer(param) {
+	var posizione=param.posizione;
+	var direzione=param.direzione;
+	pos_pointer[0]=posizione[0]+r*cos(direzione[0]);
+	pos_pointer[1]=posizione[1]+(r+5)*sin(direzione[1]);
+	pos_pointer[2]= posizione[2]+r*sin(direzione[0]);	
+	o_pointer.setPosition(pos_pointer);	
+}
+
+function aggiornaPosizione(obj_mesh, ogg1){
+	var nuovaPosizione=Vector(3);
+	var posizione=ogg1.posizione;
+	var direzione=ogg1.direzione;
+	var angoloUltimaRotazione=0;
+	var angoloRoll=0;
+	var angoloYaw=0;
+	var angoloPitch=0;
+	angoloUltimaRotazione=ogg1.ultimaRotazione*180/3.14;
+	angoloyaw=ogg1.direzione[0];
+	 if (ultimaNormale!=normaleCollisione){ 
+		ultimaNormale=normaleCollisione;			
+		var rot_mat, yaw_mat, pitch_mat;
+		rot_mat=vector(16);
+		var latoN=false;
+		if ((normaleCollisione[2]==0)){ //se siamo sul lato nord o sud di una piramide la rotazione della normale intorno all'asse z è assente (e il carro non si deve inclinare sul fianco)
+			latoN=true;
+			angoloPitch=-sin(normaleCollisione[0])*180/3.14; //il pitch in questo caso è rappresentato dalla rotazione intorno a x (world coord) 		
+		
+			pitch_mat = [cos(((angoloPitch)*PI)/180),sin(((angoloPitch)*PI)/180),0,0, //rotazione da applicare all'asse z del tank
+				 		-sin(((angoloPitch)*PI)/180),cos(((angoloPitch)*PI)/180),0,0,	
+						0,0,1,0,		 
+				        0,0,0,1];			 
+		
+			yaw_mat = [cos(((angoloyaw))),0,sin(((angoloyaw))),0,  //rotazione sull'asse y			       
+				        0,1,0, 0,
+				        -sin(((angoloyaw))),0,cos(((angoloyaw))),0,
+				        0,0,0,1];
+				       					        	
+		}
+		else { //nessuna componente x nella normale di collisione (non provoca roll del tank)
+			angoloPitch=-sin(normaleCollisione[2])*180/3.14; //l'angolo pitch è rappresentato dalla rotazione della normale di coll sull'asse z
+			pitch_mat = [ 1,0,0,0, //applica sull'asse x
+						 0,cos(((angoloPitch)*PI)/180),-sin(((angoloPitch)*PI)/180), 0,
+				 		 0,sin(((angoloPitch)*PI)/180),cos(((angoloPitch)*PI)/180), 0,				 
+				         0,0,0,1];
+			
+			yaw_mat = [cos(((angoloyaw))),0,sin(((angoloyaw))),0,  //ruota sull'asse y 	       
+				        0,1,0,0,
+				         -sin(((angoloyaw))),0, cos(((angoloyaw))),0,
+				        0,0,0,1];
+		}
+		rot_mat = MatrixMultiplyMatrix_4(pitch_mat,yaw_mat);
+		obj_mesh.SetRotationMatrix(rot_mat);
+	}
+	obj_mesh.rotate(angoloUltimaRotazione,0,1,0); //infine applica l'ultima sterzata e aggiorna la posizione
+	obj_mesh.setPosition(posizione);	
+	ogg1.ultimaRotazione=0;	
+
+	//aggiornamento dei proiettili
+	o_granataMesh.setPosition(o_granata.position);
+	o_rocket.velocita+=windVect;
+	o_rocketMesh.setPosition(o_rocket.position);	
+}
+
+function cameraManager(obj){
+	var posizione=obj.posizione;
+	var direzione=obj.direzione;
+	var cameraPosition = CameraGetPosition();
+	var nuovaPosizione=vector(3);
+	var collisionRes=array(2);
+	collisioniCorrenti.cameraCollision(obj);	
+	nuovaPosizione[0]=posizione[0]+r*-1*cos(direzione[0]); //tank al centro di unit circle, la cam vi gira intorno
+	nuovaPosizione[1]= posizione[1]+5;  //sempre alla stessa altezza
+	nuovaPosizione[2]= posizione[2]+r*-1*sin(direzione[0]);
+
+	if (!mapView) {
+		CameraSetPosition(nuovaPosizione); 
+		CameraSetTarget(o_pointer.getPosition());
+	}	
+}
+	
+function resetGame(){
+	gameTime=0;
+	cambiaGiocatore=true;
+	esitoPartita=[0,0,0];
+	tempoPlayer=0; 
+	
+	o_tank1.resetta();
+	o_tank1.posizione = [-35,0.3,-35];	
+	o_tank1.direzione=[3.14/2,0,0];
+	o_tank1Mesh.Setrotation(-90,0,1,0);
+	aggiornaPosizione(o_tank1Mesh, o_tank1);
+		
+	o_tank2.resetta();
+	o_tank2.posizione = [35,0.3,35];	
+	o_tank2.direzione=[-3.14/2,0,0];
+	o_tank2Mesh.setRotation(90,0,1,0); 
+	o_tank2Mesh.setPosition(35,0.3,35); 
+	aggiornaPosizione(o_tank2Mesh, o_tank2);	
+}
+
+
+function menu_keymanager(){
+	var menuLen;
+	if(status_intro)menulen=len(menuEntriesIntro)-1;
+	if(status_endgame)menulen=len(menuEntriesEnd)-1;
+	if(status_pause)menulen=len(menuEntriesPause)-1;
+	if(status_options)menulen=len(menuEntriesOptions)-1;
+	if (!status_controls) {
+		if (keyStatus(VK_UP)){
+			if (menuPointer>0) {
+				menuPointer--;
+			}
+		}
+		if (keyStatus(VK_DOWN)){
+			if (menuPointer<menuLen){
+				menuPointer++;
+			}
+		}
+		if (status_options){
+			if (keyStatus(VK_LEFT)){
+			if (menuPointer==0) {
+				enableShadows=false;
+			}
+			else if (menuPointer==1) {
+				if (volume>0){
+					volume-=5;
+				}
+			}
+		}
+		if (keyStatus(VK_RIGHT)){
+			if (menuPointer==0){
+				enableShadows=true;
+			}
+			else if (menuPointer==1){
+				if (volume<100){
+					volume+=5;
+				}
+			}
+		}	
+	}
+		
+		if (keyStatus(VK_RETURN)){
+			if (status_intro) {
+				if (menuPointer==0) {
+					status_game=true;	
+					status_intro=false;
+				}
+				if (menuPointer==1) {
+					status_controls=true;
+					status_intro=false;
+				}
+				if (menuPointer==2){
+					menuPointer=0; 
+					status_options=true;
+					status_intro=false;
+				}
+			}
+			else if (status_endgame) {
+				resetGame();
+				if (menuPointer==0) {
+					status_endgame=false;
+					status_game=true;	
+					
+				}
+				if (menuPointer==1) {
+					status_endgame=false;
+					status_intro=true;
+				}
+			}
+		}
+	}
+	if (keyStatus(VK_ESCAPE)){
+		if(status_controls){
+			menuPointer=0;
+			status_intro=true;
+			status_controls=false;
+		}
+		if(status_options){
+			status_intro=true;
+			status_options=false;  	
+			sound_powerup.SetVolume(volume/100.0);
+			sound_release.SetVolume(volume/100.0);
+			sound_explosion.SetVolume(volume/100.0);
+			sound_bounce.SetVolume(volume/100.0);
+		}
+		else if(status_pause){
+			status_pause=false;
+			status_game=true;
+		}
+	}
+}
+
+
+
+function controlsMenu(){
+	DrawGrid([0.5, 0.5, 0.5], 400);
+	CameraGetCurrent().RotateLocal(0.1,0,1,0);  
+	ConsoleFont("Monospace",22);
+	consoleColor(0,0,0,1);
+	ConsoleText (0.34, 0.72, "Controls are shared between players");
+	ConsoleText (0.4, 0.66, "ESC - Back/Pause");
+	ConsoleText (0.4, 0.60, "W - Move forward");
+	ConsoleText (0.4, 0.54, "S - Move backward");
+	ConsoleText (0.4, 0.48, "A - Turn left");
+	ConsoleText (0.4, 0.42, "D - Turn right");
+	ConsoleText (0.4, 0.36, "E - Pointer up");
+	ConsoleText (0.4, 0.30, "Q - Pointer down");
+	ConsoleText (0.4, 0.24, "1 - Select granade");
+	ConsoleText (0.4, 0.18, "2 - Select rocket");
+	ConsoleText (0.4, 0.12, "SPACE - Charge the shot");
+	ConsoleFont("Monospace",24);
+}
+
+function optionsMenu(){
+	DrawGrid([0.5, 0.5, 0.5], 400);
+	CameraGetCurrent().RotateLocal(0.1,0,1,0); 
+	ConsoleFont("Monospace",24);
+	consoleColor(0,0,0,1);
+	ConsoleText (0.45, 0.72, "Options");
+	ConsoleText (0.3, 0.64, "Shadows: ");
+	if (menuPointer==0){
+  		consoleColor(1,0,0,0.5);
+  		ConsoleFilledRect(0.58,0.62,0.08,-0.07);
+  	}
+  	else if (menuPointer==1){
+  		consoleColor(1,0,0,0.5);
+  		ConsoleFilledRect(0.58,0.558,0.08,-0.07);
+  	}
+  	consoleColor(0,0,0,1);
+  	var msg;
+  	(enableShadows? msg="ON" : msg="OFF");
+	ConsoleText (0.6, 0.64, msg);
+	ConsoleText (0.3, 0.58, "Volume: ");
+	ConsoleText (0.6, 0.58, str(volume/100.0));	
+}
+
+
+function introMenu(){
+	DrawGrid([0.5, 0.5, 0.5], 400);
+	CameraGetCurrent().RotateLocal(0.1,0,1,0);  
+	LoadBackground("menuimages\\background.png", VR_BILINEAR_FILTER);
+	ConsoleFont("Monospace",24);
+	
+  	if (menuPointer==0){
+  		consoleColor(1,0,0,0.5);
+  		ConsoleFilledRect(0.36,0.65,0.2,-0.1);
+  	}
+  	consoleColor(0,0,0,1);
+	ConsoleText (0.42,0.70, "Start Game");
+  	
+	if (menuPointer==1){
+  		consoleColor(1,0,0,0.5);
+  		ConsoleFilledRect(0.36,0.55,0.2,-0.1);
+  	}
+  	consoleColor(0,0,0,1);
+	ConsoleText (0.42,0.60, "Controls");
+  	
+	if (menuPointer==2){
+  		consoleColor(1,0,0,0.5);
+  		ConsoleFilledRect(0.36,0.45,0.2,-0.1);
+  	}
+  	consoleColor(0,0,0,1);
+	ConsoleText (0.42,0.50, "Options");
+	
+}
+
+function show_pausemenu(){
+	DrawGrid([0.5, 0.5, 0.5], 400);
+	CameraGetCurrent().RotateLocal(0.1,0,1,0); 
+	ConsoleFont("Monospace",24);
+	consoleColor(0,0,0,1);
+	ConsoleText (0.42,0.70, "PAUSE");
+}
+
+function mostraMenuFinePartita(esitoPartita, vittorieP1, vittorieP2, pareggi){
+	ConsoleFont("Monospace",24);
+	consoleColor(0,0,0,1);
+	ConsoleText (0.4,0.70, esitoPartita);
+	ConsoleText (0.4,0.60, "Total wins: P1 " + str(vittorieP1) + ", P2 " +str(vittorieP2));
+	if (menuPointer==0){
+  		consoleColor(1,0,0,0.5);
+  		ConsoleFilledRect(0.36,0.45,0.2,-0.1);
+  	}
+  	consoleColor(0,0,0,1);
+	ConsoleText (0.42,0.50, "Restart");
+	if (menuPointer==1){
+  		consoleColor(1,0,0,0.5);
+  		ConsoleFilledRect(0.36,0.35,0.2,-0.1);
+  	}
+  	consoleColor(0,0,0,1);
+	ConsoleText (0.42,0.40, "Back to menu");
+	
+}
+ 
+function bussola() {
+	var CameraDir= CameraGetDirection();
+	var direction="";
+	consoletext(0.01, 0.70, str(windInt));
+	if (CameraDir[0]>0&&CameraDir[2]<0.7&&CameraDir[2]>-0.7) {
+		ConsoleText(0.01,0.66,"-- Nord");
+		direction="nord";
+	}
+	else if (CameraDir[2]>0&&CameraDir[0]<0.7&&CameraDir[0]>-0.7) {
+		ConsoleText(0.01,0.66,"-- Est");
+		direction="est";
+	}
+	else if (CameraDir[0]<0&&CameraDir[2]<0.7&&CameraDir[2]>-0.7) {
+		ConsoleText(0.01,0.66,"-- Sud");
+		direction="sud";
+	}
+	else if (CameraDir[2]<0&&CameraDir[0]<0.7&&CameraDir[0]>-0.7) {
+		ConsoleText(0.01,0.66,"-- Ovest");
+		direction="ovest";
+	}
+	return direction;
+}
+
+function calcolaDistanza(param1, param2){
+	var distanza=[0,0,0];
+	distanza[0]=(param1[0]-param2[0])^2; 
+	distanza[1]=(param1[1]-param2[1])^2; 
+	distanza[2]=(param1[2]-param2[2])^2; 
+	return sqrt(distanza[0]+distanza[1]+distanza[2]);
+}
+
+function gestoreEsplosioni(projectile){
+	if (tempoEsplosione==0){ //inizio del periodo di esplosione, aggiorna i danni
+		var distanzaTank1=calcolaDistanza(projectile.position, o_tank1.posizione);
+		var distanzaTank2=calcolaDistanza(projectile.position, o_tank2.posizione);
+		if (distanzaTank1<=projectile.radius){ 
+			damageTank1 = projectile.damage-(distanzaTank1*0.5); //diminuisce con la distanza
+			o_tank1.vita-=damageTank1;
+		}
+		if (distanzaTank2<=projectile.radius){
+			damageTank2 = projectile.damage-(distanzaTank2*0.5);
+			o_tank2.vita-=damageTank2;
+		}
+		status_esplosione=true;	
+		tempoEsplosione=1;
+		(lastActiveWeapon==0? m_granataMesh.hideAll(): m_rocketMesh.hideAll());
+	}
+	else if(tempoEsplosione>0&&tempoEsplosione<300){ //se colpisco l'avversario la cam lo inquadra, altrimenti non fa nulla
+		tempoEsplosione++;
+		//outputln("tempoEsplosione :"+str(tempoEsplosione));
+	}
+	else { //pulizia e guarda cosa fare dopo
+		status_sparo=false;	
+		status_postexp=false;		
+		tempoEsplosione=0; 
+		projectile.esplodi(); //resetta tempo e posizione
+		if(o_tank1.vita<=0 && o_tank2.vita<=0) { //fa cambiare giocatore oppure finire la partita
+			status_game=false;
+			status_endGame=true;
+			pareggi++;
+			esitoPartita[2]++;
+		}
+		else if(o_tank2.vita<=0) {
+			status_game=false;
+			status_endGame=true;
+			vittorieP1++;
+			esitoPartita[0]++;
+		} 
+		else if(o_tank1.vita<=0) {
+			status_game=false;
+			status_endGame=true;
+			vittorieP2++;
+			esitoPartita[1]++;
+		} 
+		else {
+			cambiaGiocatore=true;	
+		} 
+	}		
+}
+
+//Inizializza lo sparo
+function gestoreSpari(tank, projectile, projectileMesh){
+	if ((!KeyPressed(VK_SPACE)&&projectile.potenza>0)||projectile.potenza>=10){
+		sound_powerup.stop();
+		sound_release.play();
+		status_sparo=true;
+		collisioniCorrenti.ultimaNormaleGranata=[0,0,0]; //azzera normale 
+		var pos=tank.posizione;
+		(lastActiveWeapon==0? pos[1]+=1:pos[1]+=2.5); //alza un po i proiettili
+		projectile.position=(pos);
+		projectile.direzione=(tank.direzione);
+		projectileMesh.setRotation(-(o_rocket.direzione[0]*180/3.14)+90,0,1,0);
+		projectile.setInizioLancio(projectile.potenza);
+		projectile.potenza=0; 
+		projectile.lancia();
+		(lastActiveWeapon==0? m_granataMesh.unHide(): m_rocketMesh.unHide()); 
+	}
+}
+
+function mostraDati(param){
+		/* mirino */
+		var xLine=[0.48,0.5,0.52,0.5];
+		var yLine=[0.5,0.47,0.5,0.53];
+		
+		/*hud centrale */
+		var weapon = (param.selectedWeapon==0 ? "Granade" : "Rocket");
+		var msg1=("LIFE: "+str(int(param.vita))+"        TIME:");
+		var msg2=str(20-(int(tempoPlayer)/1000));
+		var msg3=("  "+weapon);
+		ConsoleWidth(2);
+		ConsoleColor(1, 1, 1, 0.5); // r, g, b, alpha
+		ConsoleLines(xLine);
+		ConsoleLines(yLine);
+		ConsoleFilledRect(0.35, 0, 0.3, -0.1 );// x, y, dimX, dimY
+		ConsoleRect(0.344, 0, 0.312, -0.11 );
+		ConsoleFont("Monospace", 24);// name, size
+		ConsoleColor(0, 0.5, 0.5, 1); 
+		ConsoleText(0.36, 0.04, msg1);
+		((20-(int(tempoPlayer)/1000))<=5? ConsoleColor(1, 0, 0, 1) : ConsoleColor(0, 0.5, 0.5, 1)); //non c'è più tempo!!! :)
+		ConsoleText(0.516, 0.04, msg2);
+		ConsoleColor(0, 0.5, 0.5, 1); 
+		ConsoleText(0.56, 0.04, msg3);
+		
+		/*barra di caricamento dello sparo */
+		if (KeyPressed(VK_SPACE)){
+			ConsoleColor(1, 0, 0, 0.5);
+			var activeProjectile=(lastActiveWeapon==0? activeProjectile=o_granata: activeProjectile=o_rocket);
+			ConsoleFilledRect(0, 0.95, (activeProjectile.potenza/10), 0.05 );// x, y, dimX, dimY
+		}
+		
+		/*barra per l'intensità del vento */
+		ConsoleColor(1, 1, 1, 0.5); // r, g, b, alpha
+		ConsoleLines(xLine);
+		ConsoleLines(yLine);
+	    var windRatio=windInt*160/100.0;
+		ConsoleRect(0, 0, 0.161, -0.051 );
+		ConsoleColor(1, 0, 0, 1);
+		ConsoleFilledRect(0, 0, (windRatio/1000), -0.050 );// x, y, dimX, dimY
+				
+		/*danni */
+		if (status_postExp){  
+			ConsoleColor(0, 0.5, 0.5, 1); 
+			ConsoleFont("Monospace", 30); 
+			if (activePlayer1){
+				if (damageTank2>0){
+					camerasetTarget(o_tank2Mesh);
+					ConsoleText(0.48, 0.7, str(int(damageTank2)));
+				}
+			}
+			else {
+				if (damageTank1>0) {
+					camerasetTarget(o_tank1Mesh);
+					ConsoleText(0.48, 0.7, str(int(damageTank1)));
+				}
+			}
+		}
+	}
+
+/*lancio ed esplosione dei proiettili */	
+function gestoreProiettili(projectile){
+	if (projectile.potenzaLancio>0) {
+		projectile.lancia();
+	}
+	if (lastActiveWeapon==0) {
+	if (projectile.statoCollisione&&(projectile.velocita[0]>0.2||projectile.velocita[2]>0.2||projectile.velocita[0]<-0.2||projectile.velocita[2]<-0.2)){ sound_bounce.play();} //non fa il suono del rimbalzo se sta andando troppo piano
+	(projectile.statoRotolamento? sound_roll.play(): sound_roll.stop()); //rotola su rampe
+	if (getTime()-projectile.tempoLancio>5000){ 
+		projectile.statoCollisione=false;
+		projectile.statoRotolamento=false;
+		gestoreEsplosioni(o_granata); 
+		}
+	}
+	else {
+		if (o_rocket.statoCollisione||(getTime()-projectile.tempoLancio>5000&&!o_rocket.statoCollisione)){ //anche se non urta niente dopo 5 secondi esplode
+		gestoreEsplosioni(o_rocket);
+		}
+	}
+}
+
+
+function game_keymanager(param, dt){
+	if (KeyPressed("A")){
+		if(!KeyPressed("D"))
+		param.ruotaSinistra(dt);
+		if(!keyPressed("W")&&(!keyPressed("S"))){
+			sound_engine.play();
+		}	
+	}
+	if (KeyPressed("D")){
+		if(!KeyPressed("A"))
+		param.ruotaDestra(dt);
+		if(!keyPressed("W")&&(!keyPressed("S"))){
+			sound_engine.play();
+		}
+	}
+	
+	if (KeyPressed("W")){
+		if (!(status_sparo||KeyPressed(VK_SPACE)||status_idle)) {
+			param.muovi("W", dt);
+			sound_engine.stop();
+			sound_engineMid.play();
+		}
+	}
+	
+	if (KeyPressed("S")) {	
+		if (!(status_sparo||KeyPressed(VK_SPACE)||status_idle)) {
+			param.muovi("S", dt);
+			sound_engine.stop();
+			sound_engineMid.play();
+		}
+	}
+	
+	if (KeyPressed("E")){	
+		param.guardaSu(dt);
+		
+	}
+	
+	if (KeyPressed("Q")){
+		param.guardaGiu(dt);
+	}
+	
+	if (KeyPressed(VK_SPACE)){
+		if (!status_sparo && !status_idle &&!status_esplosione &&!status_postExp){
+			sound_powerup.play();
+			(lastActiveWeapon==0? o_granata.potenza+=0.12: o_rocket.potenza+=0.12); //buono anche 18
+		}
+	}
+	if (keyStatus("M")){
+			switchMapView();		
+	}
+	if (keyStatus("1")){ //cambia arma
+		if (!status_sparo && !status_idle &&!status_esplosione &&!status_postExp &&!keypressed(VK_SPACE)) {
+			lastActiveWeapon=0;
+			param.selectedWeapon=0;		
+		}
+	}
+	if (keyStatus("2")){
+		if (!status_sparo && !status_idle &&!status_esplosione &&!status_postExp&&!keypressed(VK_SPACE)){
+			lastActiveWeapon=1;
+			param.selectedWeapon=1;		
+		}
+	}
+	if (keyStatus(VK_ESCAPE)){
+		outputln("ESC");
+		status_game=false;
+		status_pause=true;
+	}
+	if (!(keyPressed("W")||keyPressed("S"))){
+		sound_engineMid.stop();
+	}
+	if (!(keyPressed("A")||keyPressed("D"))){
+		sound_engine.stop();
+	}
+}
+
+function explosion() { //disegna l'esplosione
+	var activeProjectile=(lastActiveWeapon==0? activeProjectile=o_granata: activeProjectile=o_rocket);
+	//importedLights[0].setPosition(activeProjectile.position);
+	esplosione[frameEsplosione].SetSize(5, 5);
+	esplosione[frameEsplosione].SetPosition(activeProjectile.position);
+	esplosione[frameEsplosione].Draw();
+	frameEsplosione++;
+	if(frameEsplosione==1){
+		sound_explosion.play();
+	}
+	if(frameEsplosione==16) {		
+		status_esplosione=false;
+		status_postExp=true;
+		outputln("status_postExp true");
+		//importedLights[0].setPosition(-300,-300,-300);
+		frameEsplosione=0;
+	}
+}	
+
+
+function drawScene(){
+	
+	livelloCorrente.drawSkybox();
+	if (status_esplosione){
+		explosion();
+	}
+	if(enableShadows){shadows.Start();}
+	livelloCorrente.drawLevel();
+	o_tank1Mesh.Draw();
+	o_tank2Mesh.Draw();
+	if(enableShadows){shadows.Stop();}
+	o_granataMesh.Draw();
+	o_rocketMesh.Draw();
+}
+
+function drawCompass(tank){
+glMatrixMode(GL_PROJECTION);
+glOrtho(-100, 100, 100, -100, 0.0, 1.0); //coordinate max e min schermo da fare con getscreenresolution!!
+glMatrixMode(GL_MODELVIEW); 
+glLoadIdentity();
+glDisable(GL_LIGHTING);
+glDisable(GL_DEPTH_TEST);
+glEnable(GL_TEXTURE_2D);
+glBindTexture(GL_TEXTURE_2D, compass.id);  
+gltranslate(-140, 60,0.5);
+glRotate(-(tank.direzione[0]-windDir)*180/3.14, 0,0,1); //freccetta ruota in direzione opposta al tank 
+
+glBegin(GL_QUADS);
+glTexCoord(0, 0); glVertex(-10, -10, 0);
+glTexCoord(0, 1); glVertex(-10, 10, 0);
+glTexCoord(1, 1); glVertex(10, 10, 0);
+glTexCoord(1, 0); glVertex(10, -10, 0);
+glEnd();
+glDisable(GL_TEXTURE_2D);
+glEnable(GL_LIGHTING);
+glEnable(GL_DEPTH_TEST);
+}
+
+
+function OnDownload(){
+	FileDownload("Data.zip");
+}
+
+function OnInit(params){	
+	status_intro=true;
+	status_game=false;
+	status_endGame=false;
+	status_sparo=false;
+	status_idle=false;
+	status_esplosione=false;
+	status_postExp=false;
+	status_controls=false;
+	status_options=false;
+	status_pause=false;
+	
+	CameraGetCurrent().SetPosition(CamPos);	
+	lastFrameTime=0.00001;
+	esitoPartita=[0,0,0];
+	elapsedTime=0;
+	windVect=[0,0,0];
+	windDir=0;
+	windInt=0;
+	calcolaVento();
+	
+	/*load level */
+	livelloCorrente=GeneratoreLivelli();
+	livelloCorrente.nonParsed();
+	livelloCorrente.parseLevel();
+	collisioniCorrenti=Collisioni(livelloCorrente);
+	importedMaterials=livelloCorrente.materials;
+	importedLights=livelloCorrente.lights;
+	
+	/*load shader */
+	shadows = shadowEnabler();
+	var light_pos=importedLights[0].getPosition(); //la prima luce è la principale
+	shadows.addlight(light_pos);
+	
+   /*load textures */
+	frameEsplosione=0;
+	esplosione = Array(16);
+	for(var i=0; i<len(esplosione); i++) {
+		esplosione[i] = CVmBillBoard("exp1 (" + str(i+1) + ").png");
+	}
+	compass=CVmTexture("arrows.png");
+	
+	/*load sounds */
+	sound_powerup=CVmVRAWav();
+	sound_powerup.Load("//sounds/powerup.wav");
+	sound_release=CVmVRAWav();
+	sound_release.Load("//sounds/release.wav");
+	sound_explosion=CVmVRAWav();
+	sound_explosion.Load("//sounds/explosion.wav");
+	sound_bounce=CVmVRAWav();
+	sound_bounce.Load("//sounds/bounce.wav");
+	sound_roll=CVmVRAWav();
+	sound_roll.Load("//sounds/rolling.wav");
+	sound_engine=CVmVRAWav();
+	sound_engine.Load("//sounds/engineMid.wav");
+	sound_engineMid=CVmVRAWav();
+	sound_engineMid.Load("//sounds/engine.wav");
+	
+	/* initialize obj */
+	o_tank1 = Tank();
+	o_tank1.posizione= [-35,0.3,-35];
+	m_tank1Mesh = CVMNewMesh("tank.aam");
+	m_tank1Mesh.setmaterial(importedMaterials[13]);
+	m_tank1Mesh.Normalize(1);
+	m_tank1Mesh.CenterBoundingBox();
+	o_tank1.dimensioni=m_tank1Mesh.GetBoundingBox();
+	o_tank1Mesh = CVmObj(m_tank1Mesh);
+	o_tank1Mesh.SetPosition([-35,0.3,-35]);
+	o_tank1.direzione=[3.14/2,0,0];
+	o_tank1Mesh.Setrotation(-90,0,1,0);
+	
+	o_tank2 = Tank();
+	o_tank2.posizione=[35,0.3,35];
+	m_tank2Mesh = CVMNewMesh("tank.aam");
+	m_tank2Mesh.setmaterial(importedMaterials[14]);
+	m_tank2Mesh.Normalize(1);
+	m_tank2Mesh.CenterBoundingBox();
+	o_tank2.dimensioni=m_tank2Mesh.GetBoundingBox();
+	o_tank2Mesh = CVmObj(m_tank2Mesh);
+	o_tank2Mesh.SetPosition([35,0.3,35]);
+	o_tank2.direzione=[-3.14/2,0,0];
+	o_tank2Mesh.Setrotation(90,0,1,0); 
+	
+	o_rocket=Rocket();
+	m_rocketMesh=CVmNewMesh(VRP_CYLINDER,10,0.2,2);
+	m_rocketMesh.rotate(90,1,0,0);
+	m_rocketMesh.ForceMaterial(importedMaterials[12]);	
+	m_rocketMesh.CenterBoundingBox();
+	o_rocketMesh=CVmObj(m_rocketMesh);
+	o_rocketMesh.setPosition(o_rocket.position);
+	
+	o_granata=Granata();
+	m_granataMesh=CVMNewMesh(VRP_SPHERE,10,0.2,0);
+	m_granataMesh.ForceMaterial(importedMaterials[12]);	
+	m_granataMesh.CenterBoundingBox();
+	o_granataMesh=CVmObj(m_granataMesh);
+	o_granataMesh.setPosition(o_granata.position);
+	
+	o_pointer=CVmObj();
+
+ 
+}
+
+function OnFrame(){
+if (status_intro){
+	sceneBegin();
+	menu_keymanager();
+	introMenu();
+	sceneEnd();
+}
+
+if (status_controls){
+	sceneBegin();
+	menu_keymanager();
+	controlsMenu();
+	sceneEnd();
+}
+
+if (status_options){
+	sceneBegin();
+	menu_keymanager();
+	optionsMenu();
+	sceneEnd();
+}
+	
+if (status_game) {
+	elapsedTime=getTime()-lastFrameTime;
+	lastFrameTime+=elapsedTime;
+	
+	/* tempo per scambiare i giocatori */
+	if (status_idle){
+		ConsoleFont("Monospace", 24);
+		ConsoleColor(0, 0.5, 0.5, 1); 
+		var n;
+		(activePlayer1? n="1" : n="2");
+		ConsoleText(0.447, 0.7, "Player " +n+" ready!");
+		
+	}		
+	if (activePlayer1) {
+		game_keymanager(o_tank1, elapsedTime);
+		AggiornaPosizione(o_tank1Mesh, o_tank1);
+		cameraManager(o_tank1);
+		aggiornaPointer(o_tank1);
+		mostraDati(o_tank1);
+	}
+	else {
+		game_keymanager(o_tank2, elapsedTime);
+		AggiornaPosizione(o_tank2Mesh, o_tank2);
+		cameraManager(o_tank2);
+		aggiornaPointer(o_tank2);
+		mostraDati(o_tank2);
+	}
+	
+	shadows.SetupShadows("drawScene");
+	SceneBegin();
+  		drawScene();			
+  		drawCompass(activePlayer1?o_tank1:o_tank2);
+	SceneEnd();
+}
+if (status_endGame){
+	menu_keymanager();
+	SceneBegin();		
+		var esitoDesc="";
+		if(esitoPartita[0]==1){
+			esitoDesc="Player 1 Wins!";
+		}
+		else if (esitoPartita[1]==1){
+			esitoDesc="Player 2 Wins!";
+		}
+		else {
+			esitoDesc= "Draw!";
+		}
+		mostraMenuFinePartita(esitoDesc, vittorieP1,vittorieP2, pareggi);
+    SceneEnd();
+}
+if (status_pause){
+	menu_keymanager();
+	SceneBegin();		
+		show_pausemenu();
+    SceneEnd();
+}
+}
+
+
+function DownloadReady(RequestID)
+{
+	// 
+}
+
+
+function OnTimer(){
+	if (status_game){
+		gestoreProiettili(lastActiveWeapon==0? o_granata: o_rocket);
+		if (!status_idle&&!status_postExp){
+			if (activePlayer1){
+				lastActiveWeapon=o_tank1.selectedWeapon;	
+				gestoreSpari(o_tank1, (lastActiveWeapon==0? o_granata: o_rocket), (lastActiveWeapon==0? o_granataMesh: o_rocketMesh));
+				collisioniCorrenti.cameraCollision(o_tank1);
+				var risultatoCollisione=collisioniCorrenti.tankCollision(o_tank1Mesh, o_tank1, o_tank2Mesh, ultimaNormale);
+				contatto=risultatoCollisione[0];
+				normaleCollisione=risultatoCollisione[1];
+			}
+			else {
+				lastActiveWeapon=o_tank2.selectedWeapon;
+				gestoreSpari(o_tank2, (lastActiveWeapon==0? o_granata: o_rocket), (lastActiveWeapon==0? o_granataMesh: o_rocketMesh));
+				collisioniCorrenti.cameraCollision(o_tank2);
+				var risultatoCollisione=collisioniCorrenti.tankCollision(o_tank2Mesh, o_tank2, o_tank1Mesh, ultimaNormale);
+				contatto=risultatoCollisione[0];
+				normaleCollisione=risultatoCollisione[1];
+			}
+			if (status_sparo) {
+				(lastActiveWeapon==0? collisioniCorrenti.granadeCollision(o_granata, o_granataMesh): collisioniCorrenti.rocketCollision(o_rocket, o_rocketMesh));
+			}
+		}
+		gestoreTurni();
+	}
+}
+
+function OnEvent(eventID, wparam, lparam){
+	//  put your events handling code here
+}
+
+function OnError(){
+	//  put your errors handling code here
+}
+
+function OnExit()
+{
+	// put your cleanup code here
+}
+
+
+function DrawGrid(col, size)
+{
+	/* let's not mess up current OpenGL status */
+	glPushAttrib(GL_LIGHTING_BIT | GL_LINE_BIT | GL_CURRENT_BIT);
+	
+	glLineWidth(1);
+	glDisable(GL_LIGHTING);
+	glColor(col);
+	var max = size / 2.0;
+	var min = -max;	
+	var step = size / 10.0;
+	
+	glBegin(GL_LINES);
+		for (var i = min; i <= max; i += step)
+		{
+			glVertex(i, -1, max);
+			glVertex(i, -1, min);
+			
+			glVertex(max, -1, i);
+			glVertex(min, -1, i);
+		}
+	glEnd();
+	
+	/* polite restoration of previous OpenGL status */
+	glPopAttrib();
+}

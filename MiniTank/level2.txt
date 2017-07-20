@@ -1,0 +1,126 @@
+***************************************************************************************************
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M             A0               A0
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                                                   
+*                                                                                       
+*                                                                                      
+*                                                                                      
+*                                                                                       
+*                                                                                    
+*                                                              M
+*                                                              M
+*                                                              M             A0               A0 
+*                                                              M
+*                                                              M
+*                                                              M          
+*                                                              M
+*                                                              M
+* *                                 V633                       M
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M             A0               A0    
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M
+*                                                              M 
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM          MMMMMMMMMMMMMMMMMMMM                 K31030
+*                                L2         L2      
+*                     
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*                                                        K51090
+*
+*
+*                  
+*
+*
+*
+*
+*                                                                                           P922
+*
+*
+*
+*            T121     
+*
+*                                                                           P412
+*
+*
+*
+*                        T191
+*
+*
+*
+*               
+*
+*                 
+*                                                                  G642        G642
+*
+*         
+*
+*
+*
+*
+*
+*
+*                                                                                   
+
+
+
+
+
+
+
+
+
+
+
+
+p: raggio, altezza, scala
+g: raggio, altezza, scala
+c: raggio, altezza, scala, orientamento
+b: lato e/o, altezza, lato n/s, scala 
+l: altezza
+t: materiale, altezza, scala
+k: catasta (piani, scala, gradi(xxx))
+
+
+^ pos[0]++
+|
+|
+|         0.0
+|
+|
+|
+---------------------> pos[2]++

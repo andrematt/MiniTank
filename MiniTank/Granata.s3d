@@ -1,0 +1,115 @@
+Class Granata {
+	var potenza;
+	var posizionePrecedente;
+	var position;
+	var direzione;
+	var dt;
+	var velocita;
+	var potenzaLancio; //velocità iniziale;
+	var accel;
+	var g;
+	var damage;
+	var tempo;
+	var tempoLancio;
+	var radius;
+	var mass;
+	var statoCollisione;
+	var statoRotolamento;
+	setPotenza(param);
+	resetTempo();
+	resetPosizione();
+	setInizioLancio(param);
+	setVelocitaIniziale(param);
+	getPotenzaLancio();
+	lancia();
+	esplodi();
+	toString();
+};
+
+function Granata::Granata() {
+posizionePrecedente=[300.0,0.0,300.0];
+position=[300.0,0.0,300.0];
+direzione=[0.0,0.0,0.0];
+g=[0, -9.81, 0];
+accel=Vector(3);
+velocita=Vector(3);
+potenza=0;
+mass=1;
+potenzaLancio=0;
+damage=45;
+dt=0.1; 
+
+tempoLancio=100000000;
+tempo=0;
+radius=10;
+statoCollisione=false;
+statoRotolamento=false;
+}
+
+function Granata::setPotenza(param){
+	if (potenza<10){
+		potenza+=param;
+	}
+}
+
+function Granata::resetPosizione(){
+	position=[300.0,0.0,300.0];
+	statoCollisione=false;
+}
+
+/* 
+Usa un tempo alto come default per quando
+la granata non è usata perchè se fosse 0 
+sarebbe sempre vero (dopo il primo lancio) 
+getTime()-o_granata.getTempo()>5000 e verrebbe 
+chiamata gestoreEsplosioni() inutilmente
+*/
+function Granata::resetTempo(){
+	tempoLancio=100000000;
+}
+
+function Granata::setInizioLancio(param){
+	tempoLancio=getTime();
+	potenzaLancio=1+param/3.5;
+	velocita[0]=potenzaLancio*cos(direzione[0]);
+	velocita[1]=potenzaLancio*sin(direzione[1]); 
+	velocita[2]=potenzaLancio*sin(direzione[0]);
+}
+
+
+function Granata::esplodi(){
+	resetPosizione();
+	resetTempo();	
+}
+
+//gestisce il movimento della granata
+function Granata::lancia(){
+	if(!statoCollisione){ //in caso di urto perde un po di velocità e setta la posizione dell'ultimo punto senza collisione
+		posizionePrecedente=position; 
+	}
+	else {
+		position=posizionePrecedente;
+	}
+	var dt2=getTime()-tempoLancio;
+	
+	//aggiorna le posizioni
+	velocita[1]+=0.5*g[1]*(dt*dt);
+	position+=(velocita*dt);
+}
+
+function Granata::toString(){
+	output("potenza lancio: ");
+	outputln(potenzaLancio);
+	output(" direzione: ");
+	outputln (str(direzione));
+	output(" posizione: ");
+	outputln(str(position));
+	output(" tempo: ");
+	outputln(str(tempoLancio));
+	output(" v0: ");
+	outputln (str(velocita[0]));
+	output(" v1: ");
+	outputln (str(velocita[1]));
+	output(" v2: ");
+	outputln (str(velocita[2]));
+}

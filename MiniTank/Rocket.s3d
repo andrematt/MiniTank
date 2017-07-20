@@ -1,0 +1,100 @@
+Class Rocket {
+	var potenza;
+	var position;
+	var posizionePrecedente;
+	var direzione;
+	var dt;
+	var g;
+	var velocita;
+	var potenzaLancio;
+	var gravita;
+	var damage;
+	var tempo;
+	var tempoLancio;
+	var radius;
+	var statoCollisione;
+	setPotenza(param);
+	resetTempo();
+	resetPosizione();
+	setInizioLancio(param);
+	setVelocitaIniziale(param);
+	lancia();
+	esplodi();
+	toString();
+};
+
+function Rocket::Rocket() {
+position=[300.0,0.0,300.0];
+posizionePrecedente=[300.0,0.0,300.0];
+direzione=[0.0,0.0,0.0];
+g=[0,-9.81,0];
+velocita=Vector(3);
+gravita=-0.3;
+potenza=0;
+potenzaLancio=0;
+damage=35;
+dt=0.1; 
+velocita=[0,0,0];
+tempoLancio=100000000;
+tempo=0;
+radius=10;
+statoCollisione=false;
+}
+
+function Rocket::setPotenza(param){
+	if (potenza<10){
+		potenza+=param;
+	}
+}
+
+function Rocket::resetPosizione(){
+	position=[300.0,0.0,300.0];
+	statoCollisione=false;
+}
+
+function Rocket::resetTempo(){
+	tempoLancio=100000000;
+}
+
+function Rocket::setInizioLancio(param){
+		tempoLancio=getTime();
+		potenzaLancio=4.5+param/10;
+		velocita[0]=potenzaLancio*cos(direzione[0]);
+		velocita[1]=potenzaLancio*sin(direzione[1]); 
+		velocita[2]=potenzaLancio*sin(direzione[0]);
+}
+
+function Rocket::esplodi(){
+		outputln("reset rocket");
+		resetPosizione();
+		resetTempo();	
+}
+
+//movimento del Rocket
+function Rocket::lancia(){
+	if(!statoCollisione){
+		posizionePrecedente=position; 
+	}
+	else {
+		position=posizionePrecedente;
+	}
+	velocita[1]+=0.5*g[1]*(dt*dt); 
+	position+=(velocita*dt);
+}
+
+function Rocket::toString(){
+	output("potenza lancio: ");
+	outputln(potenzaLancio);
+	output(" direzione: ");
+	outputln (str(direzione));
+	output(" posizione: ");
+	outputln(str(position));
+	output(" tempo: ");
+	outputln(str(tempoLancio));
+	output(" v0: ");
+	outputln (str(velocita[0]));
+	output(" v1: ");
+	outputln (str(velocita[1]));
+	output(" v2: ");
+	outputln (str(velocita[2]));
+}

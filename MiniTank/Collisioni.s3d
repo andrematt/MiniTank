@@ -1,0 +1,482 @@
+class Collisioni {
+	var livelloCorrente;
+	var ultimaNormaleGranata;
+	var ultimaMeshOcclusiva;
+	rocketCollision(o_rocket, o_rocketMesh);
+	granadeCollision(o_granade, o_granadeMesh);
+	tankCollision(obj1Mesh, obj1, obj2Mesh, ultimaNormale);
+	cameraCollision(obj_tank);
+};
+
+function Collisioni::Collisioni(livello){
+	livelloCorrente=livello;
+	ultimaNormaleGranata=[0,0,0]; // si azzera a ogni lancio
+	ultimaMeshOcclusiva=cvmNewMesh();
+}
+
+
+/* collisioni della cam: nascondono le mesh che occludono la visuale */
+function Collisioni::cameraCollision(tank){ //test per vedere se il segmento tra tank e cam è sgombro
+	var posTank=tank.posizione;
+	var posCam=CameraGetPosition();
+	var contatto=[0,0,0];
+	var direzioneC=[0,0,0];	
+	for (var i=0; i<len(livelloCorrente.cubi); i++){
+	var meshChecked=livelloCorrente.cubi[i].getMesh();
+		if (meshChecked.isHidden()){ //se la mesh è nascosta isColliding non la individua
+			meshChecked.unHideAll();
+		}
+		if (livelloCorrente.cubi[i].isColliding(posTank, posCam, &contatto, &direzioneC)){		
+			ultimaMeshOcclusiva=livelloCorrente.cubi[i].getMesh();
+			ultimaMeshOcclusiva.hideAll();
+		}
+	}
+	
+	 
+	for (var i=0; i<len(livelloCorrente.rampe); i++){
+	var meshChecked=livelloCorrente.rampe[i].getMesh();
+		if (meshChecked.isHidden()){ 
+			meshChecked.unHideAll();
+		}
+		if (livelloCorrente.rampe[i].isColliding(posTank, posCam, &contatto, &direzioneC)){		
+			ultimaMeshOcclusiva=livelloCorrente.rampe[i].getMesh();
+			ultimaMeshOcclusiva.hideAll();
+			return;
+		}
+	}
+	
+	for (var i=0; i<len(livelloCorrente.bordi); i++){
+	var meshChecked=livelloCorrente.bordi[i].getMesh();
+		if (meshChecked.isHidden()){ //se la mesh è nascosta isColliding non la individua
+			meshChecked.unHideAll();
+		}
+		if (livelloCorrente.bordi[i].isColliding(posTank, posCam, &contatto, &direzioneC)){		
+			ultimaMeshOcclusiva=livelloCorrente.bordi[i].getMesh();
+			ultimaMeshOcclusiva.hideAll();
+		}
+	}
+	
+	for (var i=0; i<len(livelloCorrente.cilindri); i++){
+		var meshChecked=livelloCorrente.cilindri[i].getMesh();
+		if (meshChecked.isHidden()){ 
+			meshChecked.unHideAll();
+		}
+		if (livelloCorrente.cilindri[i].isColliding(posTank, posCam, &contatto, &direzioneC)){		
+			ultimaMeshOcclusiva=livelloCorrente.cilindri[i].getMesh();
+			ultimaMeshOcclusiva.hideAll();
+		}
+	}
+	
+	for (var i=0; i<len(livelloCorrente.cols); i++){
+		var meshChecked=livelloCorrente.cols[i].getMesh();
+		if (meshChecked.isHidden()){ 
+			meshChecked.unHideAll();
+		}
+		if (livelloCorrente.cols[i].isColliding(posTank, posCam, &contatto, &direzioneC)){		
+			ultimaMeshOcclusiva=livelloCorrente.cols[i].getMesh();
+			ultimaMeshOcclusiva.hideAll();
+		}
+	}
+	
+	for (var i=0; i<len(livelloCorrente.piramidi); i++){
+		var meshChecked=livelloCorrente.piramidi[i].getMesh();
+		if (meshChecked.isHidden()){ 
+			meshChecked.unHideAll();
+		}
+		if (livelloCorrente.piramidi[i].isColliding(posTank, posCam, &contatto, &direzioneC)){		
+			ultimaMeshOcclusiva=livelloCorrente.piramidi[i].getMesh();
+			ultimaMeshOcclusiva.hideAll();
+		}
+	}
+}
+
+/* collisioni rocket */
+function Collisioni::rocketCollision(obj, mesh){
+	var contatto=[0,0,0];
+	var direzioneC=[0,0,0];
+	for (var i=0; i<len(livelloCorrente.cubi); i++){
+		if (mesh.IsCollidingBBox(livelloCorrente.cubi[i])){	
+			obj.statoCollisione=true;
+			return;
+		}
+	}
+		for (var i=0; i<len(livelloCorrente.cataste); i++){
+		if (livelloCorrente.cataste[i].IsColliding(obj.position, obj.posizionePrecedente, &contatto, &direzioneC)){	
+			obj.statoCollisione=true;
+			return;
+		}
+	}
+	
+	for (var i=0; i<len(livelloCorrente.pavimenti); i++){
+		if (mesh.IsCollidingBBox(livelloCorrente.pavimenti[i])){	
+			obj.statoCollisione=true;
+			return;
+		}
+	}
+	for (var i=0; i<len(livelloCorrente.bordi); i++){
+		if (mesh.IsCollidingBBox(livelloCorrente.bordi[i])){	
+			obj.statoCollisione=true;
+			return;
+		}
+	}
+	for (var i=0; i<len(livelloCorrente.piramidi); i++){
+		if (mesh.IsCollidingBBox(livelloCorrente.piramidi[i])){	
+			obj.statoCollisione=true;
+			return;
+		}
+	}
+		for (var i=0; i<len(livelloCorrente.rampe); i++){
+		if (mesh.IsCollidingBBox(livelloCorrente.rampe[i])){	
+			obj.statoCollisione=true;
+			return;
+		}
+	}
+	for (var i=0; i<len(livelloCorrente.archi); i++){
+		if (mesh.IsCollidingBBox(livelloCorrente.archi[i])){	
+			obj.statoCollisione=true;
+			return;
+		}
+	}
+	for (var i=0; i<len(livelloCorrente.cilindri); i++){
+		if (mesh.IsCollidingBBox(livelloCorrente.cilindri[i])){	
+			obj.statoCollisione=true;
+			return;
+		}
+	}
+
+	for (var i=0; i<len(livelloCorrente.cols); i++){
+		if (mesh.IsCollidingBBox(livelloCorrente.cols[i])){	
+			obj.statoCollisione=true;
+			return;
+		}
+	}
+	obj.statoCollisione=false;
+}
+
+/* collisioni granade */
+function Collisioni::granadeCollision(obj, mesh){
+	var contatto=[0,0,0];
+	var direzioneC=[0,0,0];	
+	if (obj.statoCollisione){obj.statoRotolamento=false;}
+	
+	for (var i=0; i<len(livelloCorrente.cubi); i++){
+		if (livelloCorrente.cubi[i].IsColliding(obj.position, obj.posizionePrecedente, &contatto, &direzioneC)){		
+			obj.statoCollisione=true;
+			obj.position=obj.posizionePrecedente;
+			obj.velocita-=2*direzioneC*(direzioneC*obj.velocita); 
+			obj.velocita[0]*=0.85;
+			obj.velocita[1]*=0.85;
+			obj.velocita[2]*=0.85;
+		}
+	}
+	
+	for (var i=0; i<len(livelloCorrente.cilindri); i++){
+		if (livelloCorrente.cilindri[i].IsColliding(obj.position, obj.posizionePrecedente, &contatto, &direzioneC)){					
+			obj.statoCollisione=true;
+			obj.position=obj.posizionePrecedente;
+			obj.velocita-=2*direzioneC*(direzioneC*obj.velocita); 
+			obj.velocita[0]*=0.85;
+			obj.velocita[1]*=0.85;
+			obj.velocita[2]*=0.85;
+		}
+	}
+	
+	for (var i=0; i<len(livelloCorrente.cataste); i++){
+		if (livelloCorrente.cataste[i].IsColliding(obj.position, obj.posizionePrecedente, &contatto, &direzioneC)){					
+			obj.statoCollisione=true;
+			obj.position=obj.posizionePrecedente;
+			obj.velocita-=2*direzioneC*(direzioneC*obj.velocita); 
+			obj.velocita[0]*=0.85;
+			obj.velocita[1]*=0.85;
+			obj.velocita[2]*=0.85;
+		}
+	}
+	
+	
+		for (var i=0; i<len(livelloCorrente.cols); i++){
+		if (livelloCorrente.cols[i].IsColliding(obj.position, obj.posizionePrecedente, &contatto, &direzioneC)){		
+			obj.statoCollisione=true;
+			obj.position=obj.posizionePrecedente;
+			obj.velocita-=2*direzioneC*(direzioneC*obj.velocita); 
+			obj.velocita[0]*=0.85;
+			obj.velocita[1]*=0.85;
+			obj.velocita[2]*=0.85;
+		}
+	}	
+	
+	for (var i=0; i<len(livelloCorrente.piramidi); i++){				
+		var piramideSelezionata=livelloCorrente.piramidi[i];
+		if (piramideSelezionata.IsColliding(obj.position, obj.posizionePrecedente, &contatto, &direzioneC)){
+			obj.statoCollisione=true;
+			obj.position[1]=obj.posizionePrecedente[1]+0.1; 
+			obj.velocita[1]*=0.85;
+			if(!(obj.velocita[0]<2&&obj.velocita[0]>-2&&obj.velocita[2]<2&&obj.velocita[2]>-2)){ //se la velocità è abbastanza alta rimbalza
+				outputln("rimbalzo");
+				obj.position[0]=obj.posizionePrecedente[0]; 
+				obj.position[2]=obj.posizionePrecedente[2]; 
+				obj.velocita-=2*direzioneC*(direzioneC*obj.velocita); 
+				obj.velocita[0]*=0.85;
+				obj.velocita[2]*=0.85;
+				return;
+			}
+			else {
+				outputln("rotolamento");
+				obj.statoRotolamento=true;
+				if(obj.velocita[0]>0 && obj.velocita[0]+(direzioneC[0]*0.2)<2) { //puo andare da positivo a negativo e viceversa (torna indietro), ma non deve superare 2/-2 altrimenti parte un rimbalzo
+					obj.velocita[0]+=(direzioneC[0]*0.2); 
+				}
+				if(obj.velocita[0]<0&&obj.velocita[0]+(direzioneC[0]*0.2)>-2){
+					obj.velocita[0]+=(direzioneC[0]*0.2);
+				}
+				if(obj.velocita[2]>0&&obj.velocita[2]+(direzioneC[2]*0.2)<2) {
+					obj.velocita[2]+=(direzioneC[2]*0.2); 
+				}
+				if(obj.velocita[2]<0 && obj.velocita[2]+(direzioneC[2]*0.2)>-2) {
+					obj.velocita[2]+=(direzioneC[2]*0.2); 
+				}
+			}
+		}
+	}
+	
+	for (var i=0; i<len(livelloCorrente.rampe); i++){				
+		var rampaSelezionata=livelloCorrente.rampe[i];
+		if (rampaSelezionata.IsColliding(obj.position, obj.posizionePrecedente, &contatto, &direzioneC)){
+			obj.statoCollisione=true;
+			obj.position[1]=obj.posizionePrecedente[1]+0.1; 
+			obj.velocita[1]*=0.85;
+			if(!(obj.velocita[0]<2&&obj.velocita[0]>-2&&obj.velocita[2]<2&&obj.velocita[2]>-2)){ //se la velocità è abbastanza alta rimbalza
+				outputln("rimbalzo");
+				obj.position[0]=obj.posizionePrecedente[0]; 
+				obj.position[2]=obj.posizionePrecedente[2]; 
+				obj.velocita-=2*direzioneC*(direzioneC*obj.velocita); 
+				obj.velocita[0]*=0.85;
+				obj.velocita[2]*=0.85;
+				return;
+			}
+			else {
+				outputln("rotolamento");
+				obj.statoRotolamento=true;
+				if(obj.velocita[0]>0 && obj.velocita[0]+(direzioneC[0]*0.2)<2) { //puo andare da positivo a negativo e viceversa (torna indietro), ma non deve superare 2/-2 altrimenti parte un rimbalzo
+					obj.velocita[0]+=(direzioneC[0]*0.2); 
+				}
+				if(obj.velocita[0]<0&&obj.velocita[0]+(direzioneC[0]*0.2)>-2){
+					obj.velocita[0]+=(direzioneC[0]*0.2);
+				}
+				if(obj.velocita[2]>0&&obj.velocita[2]+(direzioneC[2]*0.2)<2) {
+					obj.velocita[2]+=(direzioneC[2]*0.2); 
+				}
+				if(obj.velocita[2]<0 && obj.velocita[2]+(direzioneC[2]*0.2)>-2) {
+					obj.velocita[2]+=(direzioneC[2]*0.2); 
+				}
+			}
+		}
+	}
+	
+	for (var i=0; i<len(livelloCorrente.pavimenti); i++) {
+		if (livelloCorrente.pavimenti[i].IsColliding(obj.position, obj.posizionePrecedente)){
+			obj.statoCollisione=true;
+			obj.position=obj.posizionePrecedente;
+			obj.velocita[0]*=0.85; 
+			obj.velocita[1]*=-0.85;
+			obj.velocita[2]*=0.85;
+			return;
+		}
+	}
+	
+	for (var i=0; i<4; i++){
+		if ((livelloCorrente.bordi[i].IsColliding(obj.position, obj.posizionePrecedente, &contatto, &direzioneC))) {
+			obj.statoCollisione=true;
+			obj.position=obj.posizionePrecedente;
+			ultimaNormaleGranata=direzioneC;
+				if (direzioneC[0]>0||direzioneC[0]<0){ //parete nord o sud
+				obj.velocita[0]*=-0.85; 
+				obj.velocita[1]*=0.85;
+				obj.velocita[2]*=0.85;	
+			}
+			else if (direzioneC[2]>0||direzioneC[2]<0){ //parete est o ovest
+				obj.velocita[0]*=0.85; 
+				obj.velocita[1]*=0.85;
+				obj.velocita[2]*=-0.85;	
+			}
+			return;	
+		}
+	}
+	obj.statoCollisione=false;
+}
+
+
+/* collisioni tank */
+function Collisioni::tankCollision(obj1Mesh, obj1, obj2Mesh, ultimaNormale){
+	var checkCollisioni;
+	var contatto=[0,0,0];
+	var direzioneC=ultimaNormale;
+
+	//Collisione con l'altro carro	
+	if (obj1Mesh.IsCollidingBBox(obj2Mesh)){
+		checkCollisioni=true;
+		obj1.tipoCollisione="tank";
+	}
+	
+	
+	//collisione con il perimetro
+	for (var i=0; i<4; i++) { 
+		if((obj1Mesh.IsCollidingBBox(livelloCorrente.bordi[i]))){ 
+			checkCollisioni = true;
+			obj1.tipoCollisione="bordo";
+			break;
+		}
+	}
+	
+	//collisione con cubi	
+	for (var i=0; i<len(livelloCorrente.cubi); i++){ 
+		var cuboSelezionato=livelloCorrente.cubi[i];
+		if (obj1Mesh.IsCollidingBBox(cuboSelezionato)){	
+				checkCollisioni=true;	
+				obj1.tipoCollisione="cubo";
+				break;
+		}
+	}
+	
+	//collisione con cilindri	
+	for (var i=0; i<len(livelloCorrente.cilindri); i++){ 
+		var cilindroSelezionato=livelloCorrente.cilindri[i];
+		if (obj1Mesh.IsCollidingBBox(cilindroSelezionato)){	
+			checkCollisioni=true;	
+			obj1.tipoCollisione="cilindro";
+			break;
+		}
+	}
+	
+	/* cataste */	
+	var punto=vector(3);
+	punto[0]=obj1.posizione[0];
+	punto[1]=obj1.posizione[1]-1;
+	punto[2]=obj1.posizione[2];
+	for (var i=0; i<len(livelloCorrente.cataste); i++) {
+		if(livelloCorrente.cataste[i].isColliding(obj1.posizione, punto, &contatto, &direzioneC)){
+			obj1.tipoCollisione="catasta";	
+				var rimbalzo=vector(3);
+				(obj1.posizione[0]<obj1.posizionePrecedente[0]? rimbalzo[0]=+0.1:rimbalzo[0]=-0.1);
+				(obj1.posizione[2]<obj1.posizionePrecedente[2]? rimbalzo[2]=+0.1:rimbalzo[2]=-0.1);
+				obj1.posizione=obj1.posizionePrecedente+rimbalzo;
+			break;
+		}
+	}
+	
+	/* colonne */
+	for (var i=0; i<len(livelloCorrente.cols); i++){ 
+		var colSelezionata=livelloCorrente.cols[i];
+		if (obj1Mesh.IsCollidingBBox(colSelezionata)){	
+				checkCollisioni=true;	
+				obj1.tipoCollisione="colonna";
+				break;
+		}
+	}
+	
+	/* rampe, piramidi e pavimenti: la collisione è gestita in 2 parti, prima si alza il carrarmatino (se possibile), poi si controlla se abbassandolo ciò non provoca una nuova collisione (controlla se sta scendendo) */
+	var punto2=vector(3);
+	punto2[0]=obj1.posizione[0];
+	punto2[1]=obj1.posizione[1]-1;
+	punto2[2]=obj1.posizione[2];
+	for (var i=0; i<len(livelloCorrente.pavimenti); i++) {
+		if(livelloCorrente.pavimenti[i].isColliding(obj1.posizione, punto2, &contatto, &direzioneC)){
+			obj1.tipoCollisione="pavimento";
+			obj1.ultimoPavimento=i;	
+			obj1.posizione[1]=contatto[1]+1.01;
+		}
+	}
+ 
+	var segmentoMin=vector(3);
+	segmentoMin[0]=obj1.posizione[0];
+	segmentoMin[1]=obj1.posizione[1]-1;
+	segmentoMin[2]=obj1.posizione[2];
+	var segmentoMax=vector(3);
+	segmentoMax[0]=obj1.posizione[0];
+	segmentoMax[1]=obj1.posizione[1]+0.3; //altezza massimo scalino arrampicabile
+	segmentoMax[2]=obj1.posizione[2];
+	/* piramidi prima parte */
+	for (var i=0; i<len(livelloCorrente.piramidi); i++){ //controlla se c'è intersezione tra il segmento che attraversa verticalmente il carrarmatino e la piramide	
+		var piramideSelezionata=livelloCorrente.piramidi[i];
+		if (piramideSelezionata.IsColliding(segmentoMin, segmentoMax, &contatto, &direzioneC)){
+			obj1.posizione[1]=contatto[1]+1.01;
+			obj1.ultimaPiramide=i; 	
+			obj1.tipoCollisione="piramide";
+			break; //non può collidere con più di una piramide
+		}
+	}	
+	
+	/*rampe prima parte*/
+	for (var i=0; i<len(livelloCorrente.rampe); i++){ //controlla se c'è intersezione tra il segmento che attraversa verticalmente il carrarmatino e la rampa	
+		var hiddenTest=false;
+		var rampaSelezionata=livelloCorrente.rampe[i];
+		var meshChecked=rampaSelezionata.getMesh();
+		if (meshChecked.isHidden()){ //se la mesh è nascosta isColliding non la individua
+			meshChecked.unHideAll();
+			hiddenTest=true;
+		}
+		if (rampaSelezionata.IsColliding(segmentoMin, segmentoMax, &contatto, &direzioneC)){
+			segmentoMin[1]+=1.3; //se c'è intersezione alzo il segmento di controllo per vedere se "ci picchia la testa", altrimenti salirebbe sulla rampa anche quando dovrebbe incastrarcisi
+			segmentoMax[1]+=1;
+			if (rampaSelezionata.IsColliding(segmentoMin, segmentoMax, &contatto, &direzioneC)){ //se il tank è sotto una rampa
+				//outputln("picchia testa");
+				var rimbalzo=vector(3);
+				(obj1.posizione[0]<obj1.posizionePrecedente[0]? rimbalzo[0]=+0.1:rimbalzo[0]=-0.1);
+				(obj1.posizione[2]<obj1.posizionePrecedente[2]? rimbalzo[2]=+0.1:rimbalzo[2]=-0.1);
+				obj1.posizione=obj1.posizionePrecedente+rimbalzo;
+				
+				break;
+			}
+			else if(contatto[1]-obj1.posizione[1]<0.1) { //se lo scalino non è troppo alto: arrampicabile
+				//outputln("non picchia la testa");
+				obj1.posizione[1]=contatto[1]+1.01;
+				obj1.ultimaRampa=i; 	
+				obj1.tipoCollisione="rampa";
+				break; 
+			}
+			else { //scalino alto
+				//outputln("scalino alto");
+				obj1.posizione=obj1.posizionePrecedente;
+			}	
+		}
+		if (hiddenTest){ //ripristina lo status hidden iniziale
+			meshChecked.hideAll();
+			hiddenTest=false;
+		}
+	}//For rampe	
+	
+	/* rampe e piramidi seconda parte: abbassa il carrarmatino (se ciò non provoca una nuova collisione) */
+	if (obj1.tipoCollisione=="piramide"||obj1.tipoCollisione=="rampa" || obj1.tipoCollisione=="pavimento" ) { //prende l'ultimo obj colpito				
+		var selectedObj;
+		var newPos=vector(3);
+		if (obj1.tipoCollisione=="piramide") {
+			selectedObj=livelloCorrente.piramidi[obj1.ultimaPiramide];
+		}
+		else if (obj1.tipoCollisione=="rampa") {
+			selectedObj=livelloCorrente.rampe[obj1.ultimaRampa];
+		}
+		else {
+			selectedObj=livelloCorrente.pavimenti[obj1.ultimoPavimento];
+		}
+		newPos[0]=obj1.posizione[0];
+		newPos[1]=obj1.posizione[1]-1; //calcola la nuova posizione più in basso
+		newPos[2]=obj1.posizione[2];
+		if (!(selectedObj.IsColliding(obj1.posizione, newPos, &contatto, &direzioneC))){ //e se non provoca una nuova collisione la assegna
+			obj1.posizione[1]-=0.5;		
+		}				
+	}
+	
+	/* pulizia e restituisce esito */
+	if (checkCollisioni){
+		obj1.statoCollisione=true;
+	}
+	else {
+		obj1.statoCollisione=false;
+	}
+	if (obj1.posizione[1]<0) {
+		obj1.posizione[1]=0;
+	}
+	var ris = array(2);
+	ris[0]= contatto;
+	ris[1]= direzioneC;
+	return ris;	
+	}	

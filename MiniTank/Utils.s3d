@@ -1,0 +1,2012 @@
+// ******************************************************************************************************************************************
+//
+// 		Utils.s3d
+//		
+//		A collection of utility functions for use in XVR
+//
+//		by Marcello Carrozzino, marcello 'AT' sssup.it
+//		contributing: Giovanni Avveduto, Cristian Lorenzini, Franco Tecchia
+//
+//		Released 31/8/2006, Last Update 23/01/2015
+//
+//      ---------------------------------------------------------------------------------------
+//		Includes:
+//      ---------------------------------------------------------------------------------------
+//
+//      Interaction functions:
+//			  MouseUp(button) 		- Checks whether a specified mouse button has been released
+//			  KeyStatus(keycode) 	- Checks whether a specified key has been pressed for the first time
+//			  JoyStatus(keycode) 	- Checks whether a specified joystick button has been pressed for the first time
+//
+//      Graphics functions:
+//			Selection(vr_obj, mode, &compID) 	- Determines if a certain XVR object has been selected using the mouse
+//			MoveCameraTo(dest, inertia) 		- Moves smoothly the position of the current camera to a specified destination position
+//			MoveCameraTarget(dest, inertia) 	- Moves smoothly the target of the current camera to a specified destination position
+//			MoveCameraAndTarget(cdest, tdest, frames) - Moves smoothly the position and the target of the current camera to specified destination positions
+//			DrawForegroundTexturedQuad (texture, size, doclear) 	- Draws a textured quad in foreground
+//			ToolTip(s_text, reverse, bkg_color, fgd_color) 			- Displays a tooltip at the mouse location
+//		
+//		Vector functions:
+//			swap (vett, i, j)	    				- Swaps the elements i and j of a vector
+//			qsort (vec, vec_indices, first, last) 	- Sorts the vector 'vec', starting from the initial position 'fpos' to the ending position 'lpos'. The reslast is stored
+//		
+//		Math functions:
+//			Distance(p0, p1) - Calculates the square of the distance between P0 and P1
+//			Max(x, y) 		 - Calculates the maximum between x and y
+//			Min(x, y) 		 - Calculates the minimum between x and y
+//			Sign(x) 		 - Calculates the signum of a given number
+//
+//		String functions:
+//			str_replace(src_string, old_subs, new_subs) - Replaces a substring with a new one inside a given string.
+//			str_contains(src, substr) 					- Verifies is a string contains a given substring
+//			get_path(url) 								- Return the path part of a given url
+//			get_filename(url) 							- Return the filename part of a given url
+//			get_extension(filename) 					- Return the extension of a given filename
+//
+//		
+//		Classes:
+//
+// 		DebugBox 		-   display text information (for instance, variable values) on screen, in a customizable box using Console series of functions
+// 		ProgressBar 	-   allows to display a customizable progress bar, optionally enriched with text and splash images
+// 		SWPointer   	- 	isplay a custom billboard pointer, available also for stereo rendering
+// 		ShadowEnabler   -  	cast shadows on selected objects
+//
+//
+//---------------------------------------------------------------------------------------
+//
+//
+//
+//
+//		Reference:
+//---------------------------------------------------------------------------------------
+//		MouseUp(button)
+//
+// 			Checks whether a specified mouse button has been released
+// 			
+//			[out] returns true if the specified button has changed status from pressed to unpressed 
+//			[button - int] might be: MOUSELEFT, MOUSERIGHT, MOUSEMIDDLE 
+//----------------------------------------------------------------------
+//		KeyStatus(keycode) 		
+//
+// 			Checks whether a specified key has been pressed for the first time
+// 				
+//			[out] returns true if the key specified in 'keycode' has changed status from unpressed to pressed 
+//			[keycode - int|string] might be a virtualkey or an ascii *capital* symbol in quotation marks (e.g. "A", "1", etc.) 
+//----------------------------------------------------------------------
+//		JoyStatus(keycode) 			
+//
+// 			Checks whether a specified joystick button has been pressed for the first time
+// 			
+//			[out] returns true if the joystick button specified in 'keycode' has changed status from unpressed to pressed 
+//			[joycode -int] is the ID of a joystick button, might assume values ranging from 1 to 10 
+//----------------------------------------------------------------------
+//		Selection(vr_obj, mode, &compID)
+//
+//			Determines if a certain XVR object has been selected using the mouse
+// 			
+//			[out] returns true if the object vr_obj is selected by mouse, false otherwise
+// 			[out] if mode is SEL_INT_P, returns an array {bool, vec3} where bool is selection true/false and vec3 is the intersection point  
+//			[vr_obj - CVmObj|CVmCharacter] is the object to be tested against mouse selection
+//			[mode - int] specifies the selection mode. It might assume the following values: 
+//					 SEL_PICK  - The object is selected if the mouse intersects the object AND the left mouse button is pressed
+//					 SEL_PASS  - The object is selected if the mouse intersects the object 
+//					 SEL_MOVE  - As SEL_PICK, additionally the picked object is moved on the [X,Y] camera plane by dragging the mouse
+//					 SEL_RPICK - As SEL_PICK but testing the right mouse button
+//					 SEL_INT_P - As SEL_PICK, additionally returns also the intersection point
+//			[compid - int] if the object is selected, represents the ID of the selected subset (in case of CVmObj) or component (in case of CVmCharacter) 
+//----------------------------------------------------------------------
+//		MoveCameraTo(dest, inertia)
+//
+//			Moves smoothly the position of the current camera to a specified destination position
+// 			
+//			[out] returns true if the destination has been reached, false otherwise  
+//			[dest - vec3] is the destination camera position
+//			[inertia - float] determines the speed of the movement. If inertia = 1, the camera does not move; if inertia = 0, the camera is set in the destination.
+//						  typical values for inertia are in the range of 0.95 - 0.98  
+//----------------------------------------------------------------------
+//		MoveCameraTarget(dest, inertia)
+//
+//			Moves smoothly the target of the current camera to a specified destination position
+// 				
+//			[out] returns true if the destination has been reached, false otherwise  
+//			[dest - vec3] is the destination camera target
+//			[inertia - float] determines the speed of the movement. If inertia = 1, the target does not move; if inertia = 0, the target is set in the destination.
+//							  typical values for inertia are in the range of 0.95 - 0.98  
+//----------------------------------------------------------------------
+//		MoveCameraAndTarget(cdest, tdest, frames)
+//
+//			Moves smoothly the position and the target of the current camera to specified destination positions
+// 			
+//			[out] returns true if the destination has been reached, false otherwise  
+//			[cdest - vec3] is the destination camera position
+//			[tdest - vec3] is the destination camera target
+//			[frames - int] is the number of animation frames set for the movement to be accomplished
+//----------------------------------------------------------------------
+//		swap (vett, i, j)		
+//
+//			Swaps the elements i and j of a vector
+// 			
+//			[out] returns the swapped vector  
+//			[vett - vector] is the source vector
+//			[i - int] the first element index to be swapped 
+//			[j - int] the second element index to be swapped
+//			Utility function used by qsort
+//----------------------------------------------------------------------
+//		qsort (vec, vec_indices, first, last)
+//
+//			Sorts the vector 'vec', starting from the initial position 'fpos' to the ending position 'lpos'. The reslast is stored
+//			in the vector 'ind' which contains the ordered indices (vec[ind[fpos]] is the first element of the ordered vector, etc.
+// 			
+//			[out] the ordered vector  
+//			[vett - vector] is the source vector
+//			[i - int] the first element index to be swapped 
+//			[j - int] the secondt element index to be swapped
+//----------------------------------------------------------------------
+//		DrawForegroundTexturedQuad (texture, size, doclear)
+//
+//			Draws a textured quad in foreground
+// 			
+//			[out] none
+//			[texture - CVmTexture] the texture to be mapped
+//			[size - float, vec2] quad size as a vector [x,y] or a single number (same size will be used for x and y) - default: [2,2], i.e. full screen
+//			[doclear - boolean] if true, clears the color buffer - default: false
+//----------------------------------------------------------------------
+//		Distance(p0, p1)
+//
+//			Calculates the square of the distance between P0 and P1
+// 				
+//			[out] the calculated distance
+//			[p0 - vec2, vec3] the first point, might be a 2-dim or a 3-dim vector
+//			[p1 - vec2, vec3] the second point, might be a 2-dim or a 3-dim vector
+//----------------------------------------------------------------------
+//		Max(x, y)
+//
+//			Calculates the maximum between x and y
+// 			
+//			[out] the maximum
+//			[x - float] the first number
+//			[Y - float] the second number
+//----------------------------------------------------------------------
+//		Min(x, y)
+//
+//			Calculates the minimum between x and y
+// 				
+//			[out] the minimum
+//			[x - float] the first number
+//			[Y - float] the second number
+//----------------------------------------------------------------------
+//		Sign(x)
+//
+//			Calculates the signum of a given number
+// 			
+//			[out] 1 if positive, -1 if negative
+//			[x - float] the given number
+//----------------------------------------------------------------------//----------------------------------------------------------------------
+//		str_replace(src_string, old_subs, new_subs)
+//
+//			Replaces a substring with a new one inside a given string.
+// 			
+//			[out] the updated string
+//			[src_string - string] the given string
+//			[old_subs - string] the old substring
+//			[new_subs - string] the new substring
+//----------------------------------------------------------------------
+//		str_contains(src, substr)
+//
+//			Verifies is a string contains a given substring
+// 			
+//			[out] tru if src contains substr
+//			[src - string] the given string
+//			[substr - string] the given substring
+//----------------------------------------------------------------------
+//		get_path(url)
+//
+//			Return the path part of a given url
+// 			
+//			[out] the url path
+//			[url - string] the given url
+//----------------------------------------------------------------------
+//		get_filename(url)
+//
+//			Return the filename part of a given url
+// 				
+//			[out] the url filename part
+//			[url - string] the given url
+//----------------------------------------------------------------------
+//		get_extension(filename)
+//
+//			Return the extension of a given filename
+// 			
+//			[out] the filename extension
+//			[url - string] the given filename
+//----------------------------------------------------------------------
+//		ToolTip(s_text, reverse, bkg_color, fgd_color)
+//
+//			Displays a tooltip at the mouse location
+// 			
+//			[out] none
+//			[s_text - string] the tooltip text
+//			[reverse - boolean] if true the tooltip ENDS at the mouse location, otherwise STARTS there - default: false
+//			[bkg_color - vec4] background color - default: [1,1,0,,0.5] (semitransparent yellow)
+//			[fgd_color - vec4] foreground color - default: [0,0,0,1] (black)
+//
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//
+// 	DebugBox class     	
+//		
+// 	allows to display text information (for instance, variable values) on screen, in a customizable box using Console series of functions
+//
+// 	methods:
+// 		Initialize() 		 - must be called after the constructor to init the object
+// 		SetItem(text ,value)  - creates a new item for the DebugBox with the specified [text - string] label and [value - float] value  
+// 		SetPosition(x, y) 	 - sets the position of the DebugBox in windows coordinates [x, y - int]
+// 		Draw( (vx,vy) ) 	 	 - draws the DebugBox. [vx, vy  - float] (optional) is the size of the viewport; if missing, the viewport will be internally retrieved
+// 		SetColor(col) 	 	 - sets [col - vector 3|4] as the color of the DebugBox frame (default  is black)
+// 		SetFillColor(fill)    - sets [fill - vector 3|4] the fill color of the DebugBox (default is semitransparent yellow)
+// 		SetMargins(left, bot) - sets [left - float] and [bot - float] as internal margins for the DebugBox. Default values are 4, 4.	
+// 		SetFont(name, size)   - sets [name - string] as the new font name and [size - int] size for the debug box (default is "Arial", 14)
+
+//----------------------------------------------------------------------
+//
+// 	ProgressBar class     			
+// 	allows to display a customizable progress bar, optionally enriched with text and splash images
+//
+// 	methods:
+// 		InitTextures(texarray) - Sets [texarray - array of CVmTexture] the array of splash textures
+// 		SetProgress(prf) 	  - Sets the progress of the bar [prf - int] expressed as a percentage
+// 		SetText(txt)			  - Sets [txt - string] as the default text label for the bar
+// 		SetTextureIndex(ind)   - Sets the current splash texture, identified with [ind - int] as index in the splash texture array
+// 		Draw(pr,tx,ind,col,fnt)- Draws the progress bar. If [pr - int] is specified it will be set as current progress. If [tx - string] is specified it will
+//							    be set as current text label. If [ind - int] is specified it will be set as the current splash texture index. 
+//							    If [col - vec3|4] is specified it will be set as the text label color. If [fnt - array[string,int] is specified, fnt[0] will be set as
+//								the font name of the text label, fnt[1] as the new font size of the text label.
+// 		SetStereoOn()		  - Must be called in case of side-by-side stereo to enable drawing on both halves of the screen. 	
+//----------------------------------------------------------------------
+//
+// 	SWPointer class     			
+// 	allows to display a custom billboard pointer, available also for stereo rendering
+//
+// 	methods:
+// 		init(image,sz,dist)	  - Inits the billboard pointer with the image file [image - string], with the size [sz - vec2] 
+//									and at the distance [dist - float] in the range 0.0 .. 1.0
+// 		setcolor(col)		  - Sets the blending color to [col - vec4] - default: [1, 0.5, 0.5, 1]
+// 		draw(x,y,oculusOn)	  - Displays the pointer at mouse cordinates, or, if OculusOn = true, at coordinates [x,y - float]
+//						    In the latter case, coordinates will be transformed with the Oculus Deformation
+//----------------------------------------------------------------------
+// 	ShadowEnabler class     			
+// 	allows to cast shadows on selected objects
+//
+// 	public methods:
+//		addLight(pos)	- Add a casting shadows point light in a given position [pos - vec3]. Currently only one light is supported. Returns the light id.
+//		SetLightPos(id,pos) - Sets the position of the light with id [id -int] to [pos -vec3].
+//		EnableEmbeddedLightmaps(enable) - If [enable - boolean] is true, mixes casted shadows with lightmaps embedded in the mesh (otherwise these are discarded)
+//		SetupShadows(draw_func) - To be called before the actual object draw. Receives [draw_func - string] as the name of the drawing function including the objects
+//  							  on which to cast shadows.
+//		Start() - Starts shadow casting
+//  	Stop() - Stops shadow casting
+//
+//  Example:
+//
+//    function OnInit() 
+//    {..
+//    	global var shadows = shadowEnabler();
+//	 	shadows.addlight(light_pos);
+//		shadows.EnableEmbeddedLightmaps(true);
+//	  }	
+//
+//	
+//    function drawScene()
+// 	  {							
+//		shadows.Start();
+//
+//		obj1.Draw();	
+//		..
+//		objN.Draw();	
+//		shadows.Stop();
+//	  }
+//
+//    function OnFrame()
+// 	  {..						
+// 		shadows.SetupShadows("drawscene");
+//
+//		SceneBegin();
+//		drawScene();
+//		SceneEnd();
+//	  }				
+//
+// ******************************************************************************************************************************************
+
+#ifdef _INCLUDE_OCULUS_UTILS
+#include"OVR_DK2.s3d"
+#endif
+
+#define SEL_PASS 	0
+#define SEL_PICK 	1
+#define SEL_MOVE 	2
+#define SEL_RPICK 	3
+#define SEL_L_UP 	4
+#define SEL_INT_P	5
+
+#define CAMERA_SPEED 0.95
+#define CAMERA_DIST  0.005
+
+#define SPLASH_SIZE 0.3
+
+#define MOUSELEFT 0
+#define MOUSERIGHT 1
+#define MOUSEMIDDLE 2
+
+
+
+
+
+//----------------------------------------------------------------------
+function MouseUp(button)
+//----------------------------------------------------------------------
+//		MouseUp(button)
+//
+// 		Checks whether a specified mouse button has been released
+// 			
+//		[out] returns true if the specified button has changed status from pressed to unpressed 
+//		[button - int] might be: MOUSELEFT, MOUSERIGHT, MOUSEMIDDLE 
+//----------------------------------------------------------------------
+{
+	static var mupressed = {false,false,false};
+			
+	var m = false;
+	switch (button) 
+	{
+		case MOUSELEFT:
+			m = mouse.ButtonL;
+		break;
+		case MOUSERIGHT:
+			m = mouse.ButtonR;
+		break;
+		case MOUSEMIDDLE:
+			m = mouse.ButtonM;
+	}
+
+	if (!mupressed[button] && m)
+	{
+		mupressed[button] = true;
+	} 
+	else if (mupressed[button]  && !m)
+	{
+		mupressed[button] = false;
+		
+		return true;
+	}
+	return false;
+}
+
+
+//----------------------------------------------------------------------
+function KeyStatus(keycode)
+//----------------------------------------------------------------------
+//		KeyStatus(keycode) 		
+//
+// 		Checks whether a specified key has been pressed for the first time
+// 				
+//		[out] returns true if the key specified in 'keycode' has changed status from unpressed to pressed 
+//		[keycode - int|string] might be a virtualkey or an ascii *capital* symbol in quotation marks (e.g. "A", "1", etc.) 
+//----------------------------------------------------------------------
+{
+	if (valtype(keycode) == "S")
+	{
+		keycode = asc(keycode);
+	}
+		
+	static var keys_stati = vector(255);
+	if (KeyPressed(keycode))
+	{	
+		if (keys_stati[keycode] == 0.0)
+		{
+			keys_stati[keycode] = 1.0;
+			return true;
+			
+		}
+	}
+	else
+	{
+		keys_stati[keycode] = 0.0;
+		return false;
+	}
+	return false;		
+}
+
+//----------------------------------------------------------------------
+function JoyStatus(joycode)
+//----------------------------------------------------------------------
+//		JoyStatus(keycode) 			
+//
+// 		Checks whether a specified joystick button has been pressed for the first time
+// 			
+//		[out] returns true if the joystick button specified in 'keycode' has changed status from unpressed to pressed 
+//		[joycode -int] is the ID of a joystick button, might assume values ranging from 1 to 10 
+//----------------------------------------------------------------------
+
+{	
+	static var joy_stati = vector(10);
+	
+	var retjoy;
+	if (joycode == 1) retjoy = Joystick.Button1;
+	else if (joycode == 2) retjoy = Joystick.Button2;
+	else if (joycode == 3) retjoy = Joystick.Button3;
+	else if (joycode == 4) retjoy = Joystick.Button4;
+	else if (joycode == 5) retjoy = Joystick.Button5;
+	else if (joycode == 6) retjoy = Joystick.Button6;
+	else if (joycode == 7) retjoy = Joystick.Button7;
+	else if (joycode == 8) retjoy = Joystick.Button8;
+	else if (joycode == 9) retjoy = Joystick.Button9;
+	else if (joycode == 10) retjoy = Joystick.Button10;
+	
+	if (retjoy)
+	{	
+		if (joy_stati[joycode] == 0.0)
+		{
+			joy_stati[joycode] = 1.0;
+			return true;
+			
+		}
+	}
+	else
+	{
+		joy_stati[joycode] = 0.0;
+		return false;
+	}
+	return false;		
+}
+
+//----------------------------------------------------------------------
+class DebugBox
+//----------------------------------------------------------------------
+// DebugBox class     	
+//		
+// allows to display text information (for instance, variable values) on screen, in a customizable box using Console series of functions
+//
+// methods:
+// Initialize() 		 - must be called after the constructor to init the object
+// SetItem(text ,value)  - creates a new item for the DebugBox with the specified [text - string] label and [value - float] value  
+// SetPosition(x, y) 	 - sets the position of the DebugBox in windows coordinates [x, y - int]
+// Draw( (vx,vy) ) 	 	 - draws the DebugBox. [vx, vy  - float] (optional) is the size of the viewport; if missing, the viewport will be internally retrieved
+// SetColor(col) 	 	 - sets [col - vector 3|4] as the color of the DebugBox frame (default  is black)
+// SetFillColor(fill)    - sets [fill - vector 3|4] the fill color of the DebugBox (default is semitransparent yellow)
+// SetMargins(left, bot) - sets [left - float] and [bot - float] as internal margins for the DebugBox. Default values are 4, 4.	
+// SetFont(name, size)   - sets [name - string] as the new font name and [size - int] size for the debug box (default is "Arial", 14)
+{
+	var items_array;
+	var last_item;
+	var startx;
+	var starty;
+	var linespacing;
+	var font;
+	var fontsize;
+	var updirection;
+	var xsize;
+	var margin_left;
+	var margin_bottom;	
+	var color;
+	var fill_color;
+	
+	Initialize();
+	SetItem(t,v);
+	SetPosition(x,y);
+	Draw(vx,vy);
+	SetColor(col);
+	SetFillColor(fill);
+	SetMargins(mleft, mbottom);
+	SetFont(newfont,newdim);
+};
+
+function DebugBox::Initialize()
+//----------------------------------------------------------------------
+{
+	items_array = array(0);
+	last_item = 0;
+	xsize = 0;
+	updirection = false;
+	linespacing = 1;
+	font = "Arial";
+	fontsize = 14;
+	margin_left   = 4;
+	margin_bottom = 4;
+	color = [0.0,0.0,0.0,1.0];
+	fill_color = [1.0, 1.0, 0.5, 0.5];
+}
+
+function DebugBox::SetFont(newfont,newdim)
+//----------------------------------------------------------------------
+{
+	font = newfont;
+	if (newdim != void)
+		fontsize = newdim;
+}
+
+
+function DebugBox::SetColor(col)
+//----------------------------------------------------------------------
+{
+	color = col;
+}
+
+function DebugBox::SetFillColor(col)
+//----------------------------------------------------------------------
+{
+	fill_color = col;
+}
+
+function DebugBox::SetMargins(mleft,mbottom)
+//----------------------------------------------------------------------
+{
+	margin_left = mleft;
+	margin_bottom = mbottom;
+}
+
+function DebugBox::SetPosition(x,y)
+//----------------------------------------------------------------------
+{
+	startx = x;
+	starty = y;
+}
+
+function DebugBox::SetItem(testo,value)
+//----------------------------------------------------------------------
+{	
+	var testo_item;
+	if (value != void)
+	 	testo_item = sprintf("%s: %.3f", testo, value);
+	else
+		testo_item = sprintf("%s", testo);
+	Aadd(items_array, testo_item);
+	var lun = len(testo_item);
+	if (lun > xsize) xsize = lun;
+	last_item ++;
+}
+
+function DebugBox::Draw(viewportx, viewporty)
+//----------------------------------------------------------------------
+{
+	if (viewportx == VOID || viewporty == VOID)
+	{
+		var viewport = glget(GL_VIEWPORT);
+		viewportx = viewport[2];
+		viewporty = viewport[3];
+	}
+	
+	ConsoleFont(font,fontsize);
+	
+	var vspace;
+	if (viewporty == -1)
+		vspace = linespacing * 0.02;
+	else
+	{	
+		vspace = linespacing * fontsize / viewporty;
+	}
+	var i,j;
+		
+	var startbox_x = startx-margin_left/viewportx;
+	var startbox_y = vspace*last_item + starty;	
+	var dim_x = 0.75*(xsize*fontsize)/viewportx;
+	var dim_y = startbox_y-starty+margin_bottom/viewporty ;
+	
+	ConsoleColor(fill_color[0],fill_color[1],fill_color[2],fill_color[3]);
+	ConsoleFilledRect(startbox_x,startbox_y, dim_x , dim_y);
+	ConsoleColor(color[0],color[1],color[2],color[3]);
+	ConsoleRect(startbox_x,startbox_y, dim_x , dim_y);
+	
+	for (i=0;i<last_item;i++)
+	{
+		if (!updirection)
+			j = last_item - i - 1;
+		else 
+			j = i;
+			
+		ConsoleText(startx,starty+vspace*i,items_array[j]);	
+	}
+	
+	items_array = array(0);
+	last_item = 0;
+}
+
+
+
+
+//-------------------------------------------
+function Selection(vr_obj, mode, compID, pInt)
+//----------------------------------------------------------------------
+//		Selection(vr_obj, mode, &compID)
+//
+//		Determines if a certain XVR object has been selected using the mouse
+// 			
+//		[out] returns true if the object vr_obj is selected by mouse, false otherwise
+// 		[out] if mode is SEL_INT_P, returns an array {bool, vec3} where bool is selection true/false and vec3 is the intersection point  
+//		[vr_obj - CVmObj|CVmCharacter] is the object to be tested against mouse selection
+//		[mode - int] specifies the selection mode. It might assume the following values: 
+//					 SEL_PICK  - The object is selected if the mouse intersects the object AND the left mouse button is pressed
+//					 SEL_PASS  - The object is selected if the mouse intersects the object 
+//					 SEL_MOVE  - As SEL_PICK, additionally the picked object is moved on the [X,Y] camera plane by dragging the mouse
+//					 SEL_RPICK - As SEL_PICK but testing the right mouse button
+//					 SEL_INT_P - As SEL_PICK, additionally returns also the intersection point
+//		[compid - int] if the object is selected, represents the ID of the selected subset (in case of CVmObj) or component (in case of CVmCharacter) 
+//----------------------------------------------------------------------
+{  
+	static var taken_vr_obj = false; 
+	  
+	var retval; 
+	var viewport = array(4);
+	var winx,winy;
+	
+	static var p0 = [0.0,0.0,0.0];
+	static var p1 = [0.0,0.0,0.0];
+	var nrml = [0.0,0.0,0.0];
+	var n_tr; 
+	
+	viewport = glget(GL_VIEWPORT);
+	 
+	winx = Mouse.X;      //x*1.0f/width;
+	winy = viewport[3] - 1 - Mouse.Y; //1.0f - y*1.0f/height;
+	
+	var vec0 = [0.0,0.0,0.0];
+	var vec1 = [0.0,0.0,0.0];
+	vec0[0] = winx;
+	vec0[1] = winy;
+	vec0[2] = 0.0;
+	vec1[0] = winx;
+	vec1[1] = winy;
+	vec1[2] = 1.0;
+	 
+	p0 = gluUnProject(vec0);
+	p1 = gluUnProject(vec1);
+	 
+	// collision detection
+	retval = vr_obj.IsColliding(p0, p1, &pInt, &nrml, &n_tr, &compID);
+		
+ 	if (mode == SEL_PASS)
+  		return retval;
+  		
+  	if (retval && compID == -1 && vr_obj.GetMesh() !=  VOID)
+  		compID = vr_obj.GetMesh().GetSubSetFromTriIndex(n_Tr); 
+
+
+	// pick and move objects
+ 	if ((mode == SEL_PICK || mode == SEL_MOVE || mode == SEL_INT_P) && !Mouse.ButtonL)
+ 	{
+  		taken_vr_obj = Mouse.ButtonL;
+  		retval = false;
+ 	}
+ 
+ 	if (mode == SEL_RPICK && !Mouse.ButtonR)
+  		retval = false;
+  
+	 // move   
+ 	if ((retval || taken_vr_obj) && mode == SEL_MOVE)
+ 	{
+ 		taken_vr_obj = taken_vr_obj = Mouse.ButtonL; //(!taken_vr_obj && Mouse.DoubleL) ? true : (taken_vr_obj && Mouse.DoubleL) ? false : taken_vr_obj;
+
+		retval = taken_vr_obj;
+		p0 = gluProject(vr_obj.GetPosition());		//	p0:   punto di intersezione in screen coordinates		
+		vec0[2] = p0[2];			//  vec0: mouse pointer in screen coordinates con z = quella di p0	
+		p0 = gluUnProject(vec0);	//  p0:	  vec0 in world coordinates	
+		
+		vr_obj.SetPosition(p0);
+ 		
+ 	}
+ 
+ 	if (mode == SEL_INT_P)
+ 		return {retval, pInt};
+ 
+ 	return retVal; // return pInt;
+}
+
+//-------------------------------------------
+function MoveCameraTo(dest, speed)
+//----------------------------------------------------------------------
+//		MoveCameraTo(dest, inertia)
+//
+//		Moves smoothly the position of the current camera to a specified destination position
+// 			
+//		[out] returns true if the destination has been reached, false otherwise  
+//		[dest - vec3] is the destination camera position
+//		[inertia - float] determines the speed of the movement. If inertia = 1, the camera does not move; if inertia = 0, the camera is set in the destination.
+//						  typical values for inertia are in the range of 0.95 - 0.98  
+//----------------------------------------------------------------------
+{
+	var temp;
+	var dist;
+	// var speed=CAMERA_SPEED;	
+	temp = CameraGetPosition();	
+	temp = speed * temp + (1.0-speed) * dest;
+	CameraSetPosition(temp);	
+	
+	dist = ((temp[0]-dest[0])^2)+((temp[1]-dest[1])^2)+((temp[2]-dest[2])^2);
+	
+	if (dist < CAMERA_DIST) 
+	{
+		return true;		
+	}
+	else return false;
+}
+
+
+//-------------------------------------------
+function MoveCameraTarget(dest, speed)
+//----------------------------------------------------------------------
+//		MoveCameraTarget(dest, inertia)
+//
+//		Moves smoothly the target of the current camera to a specified destination position
+// 			
+//		[out] returns true if the destination has been reached, false otherwise  
+//		[dest - vec3] is the destination camera target
+//		[inertia - float] determines the speed of the movement. If inertia = 1, the target does not move; if inertia = 0, the target is set in the destination.
+//						  typical values for inertia are in the range of 0.95 - 0.98  
+//----------------------------------------------------------------------
+{	
+	var temp;
+	var dist;
+	// var speed=CAMERA_SPEED;	
+	temp=CameraGetTarget();	
+	temp=speed*temp+(1.0-speed)*dest;
+	var temp2=temp;	
+	CameraSetTarget(temp);
+	
+	dist = ((temp[0]-dest[0])^2)+((temp[1]-dest[1])^2)+((temp[2]-dest[2])^2);
+	
+	if (dist < CAMERA_DIST) 
+	{
+		return true;		
+	}
+	else return false;
+}
+
+
+//-------------------------------------------
+function MoveCameraAndTarget(cdest,tdest,frames)
+//----------------------------------------------------------------------
+//		MoveCameraAndTarget(cdest, tdest, frames)
+//
+//		Moves smoothly the position and the target of the current camera to specified destination positions
+// 			
+//		[out] returns true if the destination has been reached, false otherwise  
+//		[cdest - vec3] is the destination camera position
+//		[tdest - vec3] is the destination camera target
+//		[frames - int] is the number of animation frames set for the movement to be accomplished
+//----------------------------------------------------------------------
+{	
+	var temp;
+	static var cdist,tdist;
+	static var start = true;
+	static var nframes = 1;
+	static var cvm,tvm;
+	static var cdir,tdir;
+	
+	var _up = CameraGetCurrent().GetYAxis();
+	
+	if (start == true)
+	{
+		nframes = 0;
+		var sqdi;
+		
+		temp = CameraGetPosition();			
+		sqdi = ((temp[0]-cdest[0])^2)+((temp[1]-cdest[1])^2)+((temp[2]-cdest[2])^2);			
+		cdist = sqrt(sqdi);				
+		cdir = norm(cdest-temp);		
+		cvm = cdist/frames;				
+						
+		temp = CameraGetTarget();
+		sqdi = ((temp[0]-tdest[0])^2)+((temp[1]-tdest[1])^2)+((temp[2]-tdest[2])^2);		
+		tdist = sqrt(sqdi);
+		tdir = norm(tdest-temp);
+		tvm = tdist/frames;				
+	}
+		
+	var cspeed, tspeed;	
+	var coeff = (frames+1)/2;
+	
+	if (nframes < frames/2)
+	{
+		cspeed = nframes*cvm/coeff;
+		tspeed = nframes*tvm/coeff;
+	}
+	else
+	{
+		cspeed = (frames-nframes)*cvm/coeff;	
+		tspeed = (frames-nframes)*tvm/coeff;	
+	}
+	
+	var cv = (2*cspeed);
+	var tv = (2*tspeed);
+		
+	temp=CameraGetPosition();
+	if (cdist > 0.001)		
+		temp=temp + cv * cdir;
+	CameraSetPosition(temp);
+	
+	temp=CameraGetTarget();
+	if (tdist > 0.001)
+		temp=temp + tv * tdir;
+	CameraSetTarget(temp);
+	
+
+	nframes ++;
+	if (nframes == frames || cdist < 0.001)
+	{			
+		start = true;
+	}
+	else
+		start = false;
+		
+	CameraGetCurrent().SetUpVector(_up);
+		
+	return start;
+}
+
+//----------------------------------------------------------------------
+class ProgressBar
+//----------------------------------------------------------------------
+// ProgressBar class     			
+// allows to display a customizable progress bar, optionally enriched with text and splash images
+//
+// methods:
+// InitTextures(texarray) - Sets [texarray - array of CVmTexture] the array of splash textures
+// SetProgress(prf) 	  - Sets the progress of the bar [prf - int] expressed as a percentage
+// SetText(txt)			  - Sets [txt - string] as the default text label for the bar
+// SetTextureIndex(ind)   - Sets the current splash texture, identified with [ind - int] as index in the splash texture array
+// Draw(pr,tx,ind,col,fnt)- Draws the progress bar. If [pr - int] is specified it will be set as current progress. If [tx - string] is specified it will
+//						    be set as current text label. If [ind - int] is specified it will be set as the current splash texture index. 
+//						    If [col - vec3|4] is specified it will be set as the text label color. If [fnt - array[string,int] is specified, fnt[0] will be set as
+//							the font name of the text label, fnt[1] as the new font size of the text label.
+// SetStereoOn()		  - Must be called in case of side-by-side stereo to enable drawing on both halves of the screen. 	
+
+
+{
+	var progress;
+	var s_text;
+	var a_splash_textures;
+	var n_textures;
+	var cur_index;
+	var bkg_color;	
+	var fgd_color;
+	var m_bar_top;
+	var m_bar_bottom;
+	var m_bar_left;
+	var m_bar_right;
+	var m_pic_top;
+	var m_pic_left;
+	var m_pic_sizex;
+	var m_pic_sizey;
+	var m_stereo;
+
+		
+	SetProgress(prf);
+	InitTextures(tex_array);
+	SetText(txt);
+	SetTextureIndex(ind);
+	Draw(pr,txt,ind,col,font);
+	SetStereoOn();
+	
+	// PRIVATE
+	DrawTexture(delta);
+	DrawBar(prog, delta);
+};
+
+function ProgressBar::ProgressBar()
+//-------------------------------------------
+{
+	progress 		= 0;
+	s_text   		= "";
+	n_textures		= 0;
+	a_splash_textures = array(0);
+	cur_index       = -1;
+	bkg_color   	= [0.0, 0.0, 0.0];
+	fgd_color   	= [1.0, 1.0, 1.0];
+	m_bar_top		=  0.01;
+	m_bar_bottom	= -0.01;
+	m_bar_left		= -0.5;
+	m_bar_right		=  0.5;
+	m_pic_top		=  0.3;
+	m_pic_left		= -0.3;
+	m_pic_sizex		=  0.6;
+	m_pic_sizey		=  0.6;
+	m_stereo 		=  false;
+}
+
+function ProgressBar::SetStereoOn()
+//-------------------------------------------
+{
+	m_stereo    = true;
+	m_bar_left  = (m_bar_left-1)/2;
+	m_bar_right = (m_bar_right-1)/2;
+	m_pic_left  = (m_pic_left-1)/2;
+	m_pic_sizex	=  m_pic_sizex / 2;
+}
+
+function ProgressBar::InitTextures(tex_array)
+//-------------------------------------------
+{
+	a_splash_textures = tex_array;
+	n_textures        = len(a_splash_textures);
+}
+
+function ProgressBar::SetProgress(pr)
+//-------------------------------------------
+{
+	progress = pr;
+}
+
+function ProgressBar::SetText(txt)
+//-------------------------------------------
+{
+	s_text = txt;
+}
+
+function ProgressBar::SetTextureIndex(ind)
+//-------------------------------------------
+{
+	cur_index = ind;
+}
+
+function ProgressBar::DrawTexture(d)
+// PRIVATE -------------------------------------------
+{
+	if (d == void)
+		d = 0;
+	glTexcoord(1,0);
+	glVertex( d+ m_pic_left+m_pic_sizex,  m_pic_top, 0);
+	glTexcoord(0,0);
+	glVertex( d+ m_pic_left,  m_pic_top, 0);
+	glTexcoord(0,1);
+	glVertex( d+ m_pic_left,  m_pic_top-m_pic_sizey, 0);
+	glTexcoord(1,1);
+	glVertex( d+ m_pic_left+m_pic_sizex,  m_pic_top-m_pic_sizey, 0);
+}
+
+function ProgressBar::DrawBar(p,d)
+// PRIVATE -------------------------------------------
+{
+	if (d == void)
+		d = 0;
+
+	glVertex(d+ m_bar_left, 	m_bar_bottom, 0.0);
+	glVertex(d+ m_bar_left + p, m_bar_bottom, 0.0);
+	glVertex(d+ m_bar_left + p, m_bar_top, 0.0);
+	glVertex(d+ m_bar_left, 	m_bar_top, 0.0);
+}	
+
+	
+function ProgressBar::Draw(pr, txt, ind, col, font)
+//-------------------------------------------
+{
+	if ( valtype(pr) !="" ) progress  = pr;
+	if ( valtype(txt)!="" ) s_text    = txt;
+	if ( valtype(ind)!="" ) cur_index = ind;
+		
+	var p = progress/100.0;
+	
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+			
+	glClearColor(0.0,0.0,0.0,1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+	
+	glDisable(GL_LIGHTING);
+		
+	if(cur_index != -1 && n_textures > 0)
+	{		
+		SetActiveTexture(a_splash_textures[cur_index]);
+		glEnable(GL_TEXTURE_2D);
+		glBegin(GL_QUADS);	
+			glColor(1.0,1.0,1.0);//	++ -+ -- +-
+			DrawTexture();
+			if (m_stereo)			
+				DrawTexture(1);						
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+	}
+	
+	glTranslate(0,-0.53,0);
+		
+	if (m_stereo)
+		p = p/2;
+											
+	if (progress>=0)
+	{
+		//Barra
+		if (progress>=100.0)
+		{
+			glColor(0.6, 1.0, 0.0); 
+			glBegin(GL_QUADS);		//Barra verde finita			
+				DrawBar(1);
+				if (m_stereo)			
+					DrawBar(0.5,1);	
+			glEnd();
+		}
+		else
+		{		
+			if (m_stereo)
+				glColor(1.0-p*0.8,p,0.0,1.0); 				
+			else
+				glColor(1.0-p*0.4,p,0.0,1.0); 
+								
+			glBegin(GL_QUADS);		//Barra cangiante
+				DrawBar(p);
+				if (m_stereo)			
+					DrawBar(p,1);	
+			glEnd();
+		}		
+	}
+	
+	glEnable(GL_LIGHTING);
+	
+	glPopMatrix();
+	glLoadIdentity();
+	
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	
+	glMatrixMode(GL_MODELVIEW);
+	if (col != Void) ConsoleColor(col);
+	if (font != Void) ConsoleFont(font[0], font[1]);
+	if (m_stereo)
+	{
+		ConsoleText(0.125, 0.2, s_text);	
+		ConsoleText(0.625, 0.2, s_text);
+	}
+	else	
+		ConsoleText(0.25, 0.2, s_text);	
+		
+	SwapBuffers();
+}
+
+
+
+//-------------------------------------------
+function swap (vett, i, j)
+//----------------------------------------------------------------------
+//		swap (vett, i, j)		
+//
+//		Swaps the elements i and j of a vector
+// 			
+//		[out] returns the swapped vector  
+//		[vett - vector] is the source vector
+//		[i - int] the first element index to be swapped 
+//		[j - int] the second element index to be swapped
+//		Utility function used by qsort
+//----------------------------------------------------------------------
+{
+	var v = vett;
+	var temp = v[i];
+	v[i] = v[j];
+	v[j] = temp;
+	return v;
+}
+
+//-------------------------------------------
+function qsort (vec, vec_indices, first, last)
+//----------------------------------------------------------------------
+//		qsort (vec, vec_indices, first, last)
+//
+//		Sorts the vector 'vec', starting from the initial position 'fpos' to the ending position 'lpos'. The reslast is stored
+//		in the vector 'ind' which contains the ordered indices (vec[ind[fpos]] is the first element of the ordered vector, etc.
+// 			
+//		[out] the ordered vector  
+//		[vett - vector] is the source vector
+//		[i - int] the first element index to be swapped 
+//		[j - int] the secondt element index to be swapped
+//----------------------------------------------------------------------
+{
+	var temp,v,i;
+	
+	
+	var lv = len(vec);
+	if (first==VOID)
+		first = 0;
+	if (last == VOID)
+		last = lv-1;
+	
+	var indices = array(lv);
+	for (var i=0;i<lv;i++) 	
+		indices[i] = i;
+	
+	var vind = indices;
+	
+	if (first >= last)
+		return vec;
+		
+	var ind =  (first+last)/2;	
+	v = swap (vec, first, ind);
+	vind = swap (vind, first, ind);
+	temp = first;
+	
+	for (i=first+1;i<=last;i++) 	
+		if (v[i] < v[first])
+		{
+			temp++;
+			v = swap (v, temp, i);
+			vind = swap (vind, temp,i);			
+		}
+	
+	v = swap (v,first,temp);
+	indices = swap (vind, first, temp);
+	
+	v =	qsort (v,indices,first,temp-1);
+	v =	qsort (v,indices,temp+1,last);
+	
+	vec_indices = indices;
+	return v;			
+}
+
+
+//-------------------------------------------
+function DrawForegroundTexturedQuad(texture, size, doclear)
+//----------------------------------------------------------------------
+//		DrawForegroundTexturedQuad (texture, size, doclear)
+//
+//		Draws a textured quad in foreground
+// 			
+//		[out] none
+//		[texture - CVmTexture] the texture to be mapped
+//		[size - float, vec2] quad size as a vector [x,y] or a single number (same size will be used for x and y) - default: [2,2], i.e. full screen
+//		[doclear - boolean] if true, clears the color buffer - default: false
+//----------------------------------------------------------------------
+{	
+	var sz;
+	if (size == VOID) sz = [2.0,2.0];
+	if (doclear == VOID) doclear = false;
+	
+	var type = valtype(size);
+	if (type=="I" || type=="R")
+		sz = [size*2,size*2];
+	else if (type=="V")
+		sz = [size.x*2,size.y*2];		
+	
+	var m_pic_top		=  sz.y/2;
+	var m_pic_left		= -sz.x/2;
+	var m_pic_sizex		=  sz.x;
+	var m_pic_sizey		=  sz.y;
+	
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+		
+	if (doClear)
+	{	
+		glClearColor(0.0,0.0,0.0,1.0);
+		glClear(GL_COLOR_BUFFER_BIT);
+	}
+	glDisable(GL_LIGHTING);
+	
+	SetActiveTexture(texture);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);	
+		glColor(1.0,1.0,1.0);
+		glTexcoord(1,0);
+		glVertex(  m_pic_left+m_pic_sizex,  m_pic_top, 0);
+		glTexcoord(0,0);
+		glVertex( m_pic_left,  m_pic_top, 0);
+		glTexcoord(0,1);
+		glVertex(  m_pic_left,  m_pic_top-m_pic_sizey, 0);
+		glTexcoord(1,1);
+		glVertex(  m_pic_left+m_pic_sizex,  m_pic_top-m_pic_sizey, 0);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	
+	
+	glEnable(GL_LIGHTING);
+	
+	glPopMatrix();
+	glLoadIdentity();
+	
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	
+	glMatrixMode(GL_MODELVIEW);
+	
+}
+
+
+
+//-------------------------------------------
+function distance (p0, p1)
+//----------------------------------------------------------------------
+//		Distance(p0, p1)
+//
+//		Calculates the square of the distance between P0 and P1
+// 			
+//		[out] the calculated distance
+//		[p0 - vec2, vec3] the first point, might be a 2-dim or a 3-dim vector
+//		[p1 - vec2, vec3] the second point, might be a 2-dim or a 3-dim vector
+//----------------------------------------------------------------------
+
+{
+	if (len(p0) == 2)
+		return ((p1.x - p0.x) * (p1.x - p0.x) 
+		+ (p1.y - p0.y) * (p1.y - p0.y));
+	else
+	return ((p1.x - p0.x) * (p1.x - p0.x) 
+		+ (p1.y - p0.y) * (p1.y - p0.y) 
+		+ (p1.z - p0.z) * (p1.z - p0.z)
+	);
+}
+
+
+//-------------------------------------------
+function Max(x, y)
+//----------------------------------------------------------------------
+//		Max(x, y)
+//
+//		Calculates the maximum between x and y
+// 			
+//		[out] the maximum
+//		[x - float] the first number
+//		[Y - float] the second number
+//----------------------------------------------------------------------
+{
+	return x > y ? x : y;
+}
+
+//----------------------------------------------------------------------
+function Min(x, y)
+//----------------------------------------------------------------------
+//		Min(x, y)
+//
+//		Calculates the minimum between x and y
+// 			
+//		[out] the maximum
+//		[x - float] the first number
+//		[Y - float] the second number
+//----------------------------------------------------------------------
+
+{
+	return x < y ? x : y;
+}
+
+//-------------------------------------------
+function Sign(x)
+//----------------------------------------------------------------------
+//		Sign(x)
+//
+//		Calculates the signum of a given number
+// 			
+//		[out] 1 if positive, -1 if negative
+//		[x - float] the given number
+//----------------------------------------------------------------------
+{
+	return x == 0 ? 0 : x > 0 ? 1 : -1;
+}
+
+
+//----------------------------------------------------------------------
+function str_replace(src_string, old_subs, new_subs)
+//----------------------------------------------------------------------
+//		str_replace(src_string, old_subs, new_subs)
+//
+//		Replaces a substring with a new one inside a given string.
+// 			
+//		[out] the updated string
+//		[src_string - string] the given string
+//		[old_subs - string] the old substring
+//		[new_subs - string] the new substring
+//----------------------------------------------------------------------
+{
+	var asrc = Split(src_string, old_subs);
+	
+	var result = ""; 
+	for (var i = 0; i < len(asrc) - 1; i++)
+		result += (asrc[i] + new_subs);
+	
+	result += asrc[len(asrc) - 1];
+
+	return result;
+}
+
+//----------------------------------------------------------------------
+function str_contains(src, substr)
+//----------------------------------------------------------------------
+//		str_contains(src, substr)
+//
+//		Verifies is a string contains a given substring
+// 			
+//		[out] tru if src contains substr
+//		[src - string] the given string
+//		[substr - string] the given substring
+//----------------------------------------------------------------------
+{
+	var t = Split(src, substr);
+	return len(t) > 1;
+}
+
+
+//----------------------------------------------------------------------
+function get_path(url)
+//----------------------------------------------------------------------
+//		get_path(url)
+//
+//		Return the path part of a given url
+// 			
+//		[out] the url path
+//		[url - string] the given url
+//----------------------------------------------------------------------
+{
+	var elements = Split(url, "/");
+	if (len(elements) == 1)
+		elements = Split(url, "\\");
+	if (len(elements) == 1)
+		return ("");	
+	var last = elements[len(elements) - 1];
+	return left(url, len(url) - len(last));
+}
+
+//----------------------------------------------------------------------
+function get_filename(url)
+//----------------------------------------------------------------------
+//		get_filename(url)
+//
+//		Return the filename part of a given url
+// 			
+//		[out] the url filename part
+//		[url - string] the given url
+//----------------------------------------------------------------------
+{
+	var elements = Split(url, "/");
+	if (len(elements) == 1)
+		elements = Split(url, "\\");	
+	return elements[len(elements) - 1];
+}
+
+//----------------------------------------------------------------------
+function get_extension(filename)
+//----------------------------------------------------------------------
+//		get_extension(filename)
+//
+//		Return the extension of a given filename
+// 			
+//		[out] the filename extension
+//		[url - string] the given filename
+//----------------------------------------------------------------------
+
+{
+	var elements = Split(filename, ".");
+	if (len(elements) == 1)
+		return ("");
+	return elements[len(elements) - 1];
+}
+
+
+
+
+
+
+
+//-------------------------------------------
+function ToolTip(s_text, reverse, bkg_color, fgd_color)
+//----------------------------------------------------------------------
+//		ToolTip(s_text, reverse, bkg_color, fgd_color)
+//
+//		Displays a tooltip at the mouse location
+// 			
+//		[out] none
+//		[s_text - string] the tooltip text
+//		[reverse - boolean] if true the tooltip ENDS at the mouse location, otherwise STARTS there - default: false
+//		[bkg_color - vec4] background color - default: [1,1,0,,0.5] (semitransparent yellow)
+//		[fgd_color - vec4] foreground color - default: [0,0,0,1] (black)
+//---------------------------------------------------------------------
+{
+	var fontsize = 14;
+	ConsoleFont("Arial",fontsize);
+	
+	var mx = 0.0;
+	var my = 0.0;
+	var viewport = glget(GL_VIEWPORT);
+	
+	if ( valtype(reverse)=="" )
+		reverse = false;	
+	
+	if ( valtype(bkg_color)=="" )
+		bkg_color = [1.0,1.0,0.0,0.5];
+	
+	if ( valtype(fgd_color)=="" )
+		fgd_color = [0.0,0.0,0.0,1.0];	
+	
+	glColor(1.0,1.0,1.0,0.1);
+		
+	var pixely = 1.0/Viewport[3];	
+	var pixelx = 1.0/Viewport[2];
+	
+	var stretch_factor = 0.65;
+	var xdim = stretch_factor*fontsize*pixelx*len(s_text);		
+	
+	mx = (Mouse.x/Viewport[2]);
+	if (reverse)
+		mx = mx-xdim;
+			
+	my = (Mouse.y/Viewport[3]);
+	
+
+	
+	var ydim = (fontsize+4)/Viewport[3];
+	
+	ConsoleColor( bkg_color[0], bkg_color[1], bkg_color[2], bkg_color[3]);
+	
+	ConsoleFilledRect(mx,1.0-my, xdim, -ydim );
+	
+	ConsoleColor( fgd_color[0], fgd_color[1], fgd_color[2], fgd_color[3]);
+	ConsoleText(mx+4*pixelx,1.0-my+4*pixely,s_text);	
+}
+ 
+
+//-------------------------------------------
+class SWPointer
+//----------------------------------------------------------------------
+// SWPointer class     			
+// allows to display a custom billboard pointer, available also for stereo rendering
+//
+// methods:
+// init(image,sz,dist)	  - Inits the billboard pointer with the image file [image - string], with the size [sz - vec2] 
+//							and at the distance [dist - float] in the range 0.0 .. 1.0
+// setcolor(col)		  - Sets the blending color to [col - vec4] - default: [1, 0.5, 0.5, 1]
+// draw(x,y,oculusOn)	  - Displays the pointer at mouse cordinates, or, if OculusOn = true, at coordinates [x,y - float]
+//						    In the latter case, coordinates will be transformed with the Oculus Deformation
+{
+	var b_pointer;
+	var size;
+	var distance;
+	var color;
+	
+	init(image,sz,dist);
+	setcolor(col);
+	draw(x,y,on);
+};
+
+function SWPointer::init(image,sz,dist)
+//-------------------------------------------
+{
+	if (sz == VOID)
+	{
+		size = vector(2);
+		size.x = 3;
+		size.y = 4;
+	}
+	else
+		size = sz;
+		
+	if (dist == VOID)
+	{
+		distance = 0.994;
+	}
+	else
+		distance = dist;
+	
+	b_pointer = CVmBillBoard(image,size.x,size.y);
+	color = [1, 0.5, 0.5];
+}
+
+function SWPointer::SetColor(col)
+//-------------------------------------------
+{
+	color = col;
+}
+
+function SWPointer::Draw(x,y,oculusOn)
+//-------------------------------------------
+{
+	ShowCursor(false);
+	var viewport = Glget(GL_VIEWPORT);
+	var pwin = vector(3);
+
+#ifdef _INCLUDE_OCULUS_UTILS	
+	if (OculusOn)
+	{
+		var inv = Oculus_InvertCoords([x,y]);	
+		var fbores = Oculus_GetCorrectFBORes();
+		pwin[0] = inv.x*fbores.x;
+ 		pwin[1] = inv.y*fbores.y;
+ 		pwin[2] = distance;
+ 		b_pointer.SetSize(0.05*size.x,0.05*size.y);
+ 	}
+ 	else
+#endif 	
+ 	{
+ 		pwin = [Mouse.x,viewport[3]-Mouse.y,distance];
+ 		b_pointer.SetSize(size.x,size.y);
+ 	}
+ 	
+	
+	var point=gluUnproject(pwin);			
+	glEnable(GL_BLEND);
+	glColor([color.r, color.g, color.b,1]);
+	glDisable(GL_DEPTH_TEST);		
+	b_pointer.SetPosition(point);		
+	b_pointer.Draw(VR_CLAMP);
+	glEnable(GL_DEPTH_TEST);	
+}
+
+
+
+//-------------------------------------------
+class ShadowEnabler
+//----------------------------------------------------------------------
+// ShadowEnabler class     			
+// allows to cast shadows on selected objects
+//
+// public methods:
+//	addLight(pos)	- Add a casting shadows point light in a given position [pos - vec3]. Currently only one light is supported. Returns the light id.
+//	SetLightPos(id,pos) - Sets the position of the light with id [id -int] to [pos -vec3].
+//	EnableEmbeddedLightmaps(enable) - If [enable - boolean] is true, mixes casted shadows with lightmaps embedded in the mesh (otherwise these are discarded)
+//	SetupShadows(draw_func) - To be called before the actual object draw. Receives [draw_func - string] as the name of the drawing function including the objects
+//  						  on which to cast shadows.
+//	Start() - Starts shadow casting
+//  Stop() - Stops shadow casting
+//  Example:
+//
+//    function OnInit() 
+//    {..
+//    	global var shadows = shadowEnabler();
+//	 	shadows.addlight(light_pos);
+//		shadows.EnableEmbeddedLightmaps(true);
+//	  }	
+//
+//	
+//    function drawScene()
+// 	  {							
+//		shadows.Start();
+//
+//		obj1.Draw();	
+//		..
+//		objN.Draw();	
+//		shadows.Stop();
+//	  }
+//
+//    function OnFrame()
+// 	  {..						
+// 		shadows.SetupShadows("drawscene");
+//
+//		SceneBegin();
+//		drawScene();
+//		SceneEnd();
+//	  }				
+
+{
+	var sh_fbo;
+	var sh_shader;
+	var n_lights;
+	var light_array_pos;
+	var light_target_pos;
+	var camera_array;
+	var dummy_texture;
+	var light_mat_proj;
+	var light_mat_modelview;
+	
+	var embedded_lightmap_on;
+
+	// Public: 
+	addLight(pos);
+	EnableEmbeddedLightmaps(enable);
+	SetLightPos(id,pos);
+	SetupShadows(draw_func);
+	Start();
+	Stop();
+	// Private:
+	renderOnTexture(draw_func,light_Id);
+	FillTextureMatrix();	
+	show_fbo();
+	
+};
+
+
+function ShadowEnabler::ShadowEnabler()
+//-------------------------------------------4096
+{
+	sh_fbo = CVmFbo(VR_FBO_SHADOW, 2048, 2048, GL_DEPTH_COMPONENT);
+	//sh_fbo.EnableMipmaps(); 
+	glTexParameteri(GL_TEXTURE_2D, 0x884C, 0x884E); //GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+	sh_shader = CVmShaderProgram("shadows_tex.sh");
+	n_lights = 0;
+	light_array_pos = array(0);
+	camera_array = array(0);
+	light_target_pos = [0.001,0.001,0.001];
+	
+	light_mat_proj      = glGet(GL_PROJECTION_MATRIX);
+	light_mat_modelview = glGet(GL_MODELVIEW_MATRIX);
+	
+	dummy_texture = CVmTexture(1,1,VR_RGB_TEXTURE);
+	
+	embedded_lightmap_on = false;	
+}
+
+function ShadowEnabler::EnableEmbeddedLightmaps(enable)
+//-------------------------------------------
+{
+	embedded_lightmap_on = enable;
+}
+
+function ShadowEnabler::addLight(pos)
+//-------------------------------------------
+{
+	aadd(light_array_pos,pos);
+	
+	var c = CVmCamera();
+	aadd(camera_array,c);
+	n_lights++;
+	
+	c.SetId(n_lights);		
+	c.SetPosition(pos);
+	c.SetTarget(light_target_pos);	
+	return n_lights;		
+}
+
+function ShadowEnabler::SetLightPos(id,pos)
+//-------------------------------------------
+{
+	camera_array[id].SetPosition(pos);	
+}
+
+
+function ShadowEnabler::RenderOnTexture(draw_func,light_id)
+//-------------------------------------------
+{
+	if (n_lights == 0)
+	{
+		outputln ("No lights available for shadow casting");
+		return;
+	}
+	
+	if (light_id == VOID)
+		light_id = 0;
+			
+	/*
+	 * First of all, you have to notify your intention
+	 * to draw on the offscreen framebuffer you have created
+	 * (that is, render to texture)
+	 */
+	sh_fbo.Start();
+	
+	/*
+	 * Then, you start drawing as usual in XVR
+	 */	
+	SceneBegin(camera_array[light_id]);
+	
+		
+		/*
+		 * Retrieve the modelview and projection matrix of the light
+		 * and save them; of course if the light is fixed, this is
+		 * needed only once
+		 */
+		light_mat_proj      = glGet(GL_PROJECTION_MATRIX);
+		
+		light_mat_modelview = glGet(GL_MODELVIEW_MATRIX);
+		/*
+		 * Polygon offset is needed in order to avoid artifacts in the
+		 * final image due to low precision of depth buffer values
+		 */
+		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPolygonOffset(2,2);
+		
+			/*
+			 * Here, draw all the objects that should CAST shadows
+			 */
+			callback(draw_func,false);
+		
+		glDisable(GL_POLYGON_OFFSET_FILL);
+		
+	SceneEnd();
+	
+	/*
+	 * Tell XVR that you are done with the offscreen framebuffer
+	 * and that subsequent draw operations should occur on the screen
+	 */
+	sh_fbo.Stop();
+		
+}
+
+function ShadowEnabler::FillTextureMatrix()
+//-------------------------------------------
+{
+	glMatrixMode (GL_TEXTURE);
+	glPushMatrix();
+	
+	/*
+	 * First of all, we have to clamp the values in the [0.0,1.0] range
+	 * instead of the [-1.0,1.0] we obtain from the view matrices
+	 */
+	glLoadIdentity();
+	glTranslate(0.5, 0.5, 0.5);
+	glScale(0.5, 0.5, 0.5);
+	
+	/*
+	 * Next, multiply by the previously retrieved light matrices
+	 */
+	glMultMatrix(light_mat_proj);
+	glMultMatrix(light_mat_modelview);
+		
+	/*
+	 * Finally, we multiply by the inverse of the *current* modelview matrix
+	 * This is needed because it is already included in each vertex own modelview
+	 */
+	var s_mat_m = glGet(GL_MODELVIEW_MATRIX);
+	
+	/*
+	 * This matrix should always be invertible, but still...
+	 */
+	if (MatrixDet_4(s_mat_m) == 0)
+		Quit("Singular view matrix!");
+		
+	s_mat_m = MatrixInverse_4(s_mat_m);
+	glMultMatrix(s_mat_m);
+	
+	glMatrixMode (GL_MODELVIEW);
+}
+
+function ShadowEnabler::SetupShadows(draw_func)
+//-------------------------------------------
+{	
+	RenderOnTexture(draw_func);		//chiamare prima della scenebegin	
+}
+
+function ShadowEnabler::show_fbo()
+//-------------------------------------------
+{
+	glPushAttrib(GL_LIGHTING_BIT | GL_CURRENT_BIT);
+	
+	glDisable(GL_LIGHTING);
+	glColor(1.0, 1.0, 1.0, 1.0);
+	
+	SetActiveTexture(sh_fbo, VR_BILINEAR_FILTER , 0);
+	
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+	glTranslate(-1.5, -1.5, -2.5);
+	//glScale(0.5, 0.5, 1.0);
+	
+	glBegin(GL_QUADS);
+		glTexCoord(0.0, 0.0);
+		glVertex(0.0, 0.0, 0.0);
+		
+		glTexCoord(1.0, 0.0);
+		glVertex(1.0, 0.0, 0.0);
+		
+		glTexCoord(1.0, 1.0);
+		glVertex(1.0, 1.0, 0.0);
+		
+		glTexCoord(0.0, 1.0);
+		glVertex(0.0, 1.0, 0.0);
+	glEnd();
+	
+	glPopMatrix();
+	
+	glPopAttrib();
+}
+
+
+function ShadowEnabler::Start()
+//-------------------------------------------
+{		
+	SetActiveTexture(dummy_Texture, VR_NO_FILTER , 0);	//disattivato bilinear per aumentare un poco il frame rate
+	FillTextureMatrix();
+	
+	
+	sh_shader.Start();
+	SetActiveTexture(sh_fbo, VR_NO_FILTER , 4); 
+		
+	//sh_shader.SetParameter("tex", 0); //passa parametri agli uniforms nello shader
+  	//sh_shader.SetParameter("litex", 1);
+  	sh_shader.SetParameter("shadowMap", 4);
+  	//sh_shader.SetParameter("EnableLightmap", embedded_lightmap_on);
+	
+}
+
+function ShadowEnabler::Stop()
+//-------------------------------------------
+{						
+   	glMatrixMode(GL_TEXTURE);
+   	glPopMatrix();
+   	glMatrixMode(GL_MODELVIEW);
+   	
+   	sh_shader.Stop();
+   	
+   	SetActiveTexture(dummy_Texture, VR_BILINEAR_FILTER , 0);	// Se manca, il logo XVR va a pallino   
+}
+
+
+//========================================================================================================================
+function CameraMoveKeyboard(cam, trasl_sensitivity, rot_sensitivity, fly, inertia_frames, doActualRotation)
+//========================================================================================================================
+{
+	static var XAngle = 0.0;
+	static var YAngle = 0.0;
+		
+
+	var inertia_off = false;
+	static var inertia = 1.0;
+	var stepinertia = 0.025;
+	
+
+	if (cam == VOID)
+		cam = CameraGetCurrent();
+	if (trasl_sensitivity == VOID)
+		trasl_sensitivity = 0.0003;
+	if (rot_sensitivity == VOID)
+		rot_sensitivity = 0.0004;
+	if (fly == VOID)
+		fly = false;
+	if(doActualRotation==VOID)
+		doActualRotation = true;
+		
+	if (inertia_frames == VOID)
+	{
+		inertia_off = false;
+		stepinertia = 0.050;
+	}
+	else
+	{
+		if (inertia_frames == 0)
+			inertia_off = true;
+		else
+			stepinertia = 1.0/inertia_frames;	
+	}
+	
+	
+	var XAxis = cam.GetXAxis();
+	var YAxis = cam.GetYAxis();
+	var ZAxis = cam.GetZAxis();
+	
+	/* TODO: these variables should be relative to the current camera */
+	static var lastdx = 0;
+	static var lastdy = 0;
+	static var lastdh = 0;
+	static var lastdrx = 0;
+	static var lastdry = 0;
+	
+	var kx = 0;
+	var ky = 0;
+	var kz = 0;
+	var krx = 0;
+	var kry = 0;
+	var speed = 2;
+	
+	var kpressed = false;
+	
+	if (KeyPressed(VK_RIGHT))
+	{
+		kx = 1;
+		kpressed = true;
+	}	
+	if (KeyPressed(VK_LEFT))
+	{
+		kx = -1;
+		kpressed = true;
+	}	
+	if (KeyPressed(VK_UP))
+	{
+		kz = -1;
+		kpressed = true;
+	}	
+	if (KeyPressed(VK_DOWN))
+	{
+		kz = 1;
+		kpressed = true;
+	}			
+	if (KeyPressed(VK_PRIOR))
+	{
+		ky = 1;
+		kpressed = true;
+	}
+	if (KeyPressed(VK_NEXT))
+	{
+		ky = -1;
+		kpressed = true;
+	}		
+	if (KeyPressed("W"))
+	{
+		krx = 1;
+		kpressed = true;
+	}	
+	if (KeyPressed("S"))
+	{
+		krx = -1;
+		kpressed = true;
+	}	
+	if (KeyPressed("A"))
+	{
+		kry = 1;
+		kpressed = true;
+	}	
+	if (KeyPressed("D"))
+	{
+		kry = -1;	
+		kpressed = true;
+	}
+		
+	var deltax = speed*(127)*kX;
+	var deltay = speed*-(127)*kz;
+	var deltaheight = speed*(127)*ky;	
+	
+	var deltarx = 2*speed*(127)*krX;
+	var deltary = 2*speed*-(127)*krY;
+		
+		
+	static var stop = false;	
+	
+	if (kpressed)	
+	{	
+
+		if (!fly) 
+			cam.SetPosition(	cam.GetPosition()+
+								[-ZAxis[0],0,-ZAxis[2]]*deltay*trasl_sensitivity + 
+								XAxis*(deltax*trasl_sensitivity) +
+								YAxis*(deltaheight*trasl_sensitivity) 
+			);
+		else 
+			cam.SetPosition(	cam.GetPosition() + 
+								(-Zaxis)*(deltay*trasl_sensitivity) + 
+								XAxis*(deltax*trasl_sensitivity) +
+								YAxis*(deltaheight*trasl_sensitivity)
+			);
+		
+		if (doActualRotation)
+		{
+			cam.RotateLocal(deltaRx*rot_sensitivity,1,0,0);
+			cam.RotateGlobal(deltaRY*rot_sensitivity,0,1,0);
+		}
+		else
+		{
+			Yangle += deltaRY * rot_sensitivity;	
+			Xangle += deltaRX * rot_sensitivity;	
+		}		
+		
+		lastdx = deltax;
+		lastdy = deltay;		
+		lastdh = deltaheight;
+		lastdrx = deltarx;
+		lastdry = deltary;
+		stop = false;
+	}
+	else if (!stop)
+	{
+		if (!inertia_off)
+		{			
+			if (doActualRotation)
+			{
+				cam.RotateLocal(lastdrx*rot_sensitivity*inertia,1,0,0);
+				cam.RotateGlobal(lastdry*rot_sensitivity*inertia,0,1,0);
+			}
+			else
+			{
+				Yangle += lastdry*rot_sensitivity*inertia;	
+				Xangle += lastdrx*rot_sensitivity*inertia;	
+			}	
+			
+			if (!fly) 
+				cam.SetPosition(	cam.GetPosition() + 
+									[-Zaxis[0],0,-Zaxis[2]]*lastdy*trasl_sensitivity*inertia + 
+									XAxis*(lastdx*trasl_sensitivity*inertia) + 
+									YAxis*(lastdh*trasl_sensitivity*inertia)
+				);
+			else 
+				cam.SetPosition(	cam.GetPosition() + 
+									(-Zaxis)*(lastdy*trasl_sensitivity*inertia) + 
+									XAxis*(lastdx*trasl_sensitivity*inertia) +
+									YAxis*(lastdh*trasl_sensitivity*inertia)
+				);	
+			inertia -= stepinertia;
+			if (inertia <= 0)
+			{					
+				inertia = 1;	
+				stop = true;			
+			}
+		}	
+	}		
+	
+	return [XAngle,YAngle];
+}
